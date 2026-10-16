@@ -1023,6 +1023,10 @@ function renderRadarTab(container) {
   };
 }
 
+// Global KYC Filter & Search State (Picture 2 requirement)
+let kycSearchQuery = '';
+let kycStatusFilter = 'ALL';
+
 // ----------------------------------------------------------
 // Tab 2: e-KYC Approval Queue
 // ----------------------------------------------------------
@@ -1031,13 +1035,24 @@ function renderKYCTab(container) {
   const approvedCount = appState.kycQueue.filter(k => k.status === 'APPROVED').length;
   const rejectedCount = appState.kycQueue.filter(k => k.status === 'REJECTED').length;
 
+  const q = (kycSearchQuery || '').toLowerCase().trim();
+  const filteredQueue = appState.kycQueue.filter(k => {
+    const matchesFilter = (kycStatusFilter === 'ALL') || (k.status === kycStatusFilter);
+    if (!matchesFilter) return false;
+    if (!q) return true;
+    const nameMatch = (k.name || '').toLowerCase().includes(q);
+    const phoneMatch = (k.phone || '').includes(q) || (k.cleanPhone || '').includes(q);
+    const idMatch = (k.idNumber || '').toLowerCase().includes(q);
+    return nameMatch || phoneMatch || idMatch;
+  });
+
   container.innerHTML = `
     <div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:2rem;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
         <div>
           <h2 style="font-size:1.6rem; margin-bottom:0.3rem;">e-KYC ভেরিফিকেশন কিউ</h2>
           <p style="color:var(--text-secondary); font-size:0.9rem;">
-            লাইভ ক্যামেরা সেলফি ও পরিচয়পত্রের ছবি (NID সামনে ও পেছনে, জন্ম নিবন্ধনের ১টি কপি) মিলিয়ে অনুমোদন বা বাতিল করুন।
+            লাইভ ক্যামেরা সেলফি ও পরিচয়পত্রের ছবি মিলিয়ে অনুমোদন বা বাতিল করুন।
           </p>
         </div>
 
@@ -1048,25 +1063,45 @@ function renderKYCTab(container) {
         </div>
       </div>
 
-      <!-- Quick Stats Filter -->
-      <div style="display:flex; gap:1rem; margin-bottom:1.5rem; font-size:0.85rem;">
-        <span style="color:var(--text-muted);">মোট আবেদন: <strong>${appState.kycQueue.length}</strong></span> |
-        <span style="color:var(--cyan-400);">অপেক্ষমাণ (Pending): <strong>${pendingCount}</strong></span> |
-        <span style="color:var(--emerald-400);">অনুমোদিত (Approved): <strong>${approvedCount}</strong></span> |
-        <span style="color:var(--red-500);">বাতিল (Rejected): <strong>${rejectedCount}</strong></span>
+      <!-- Search & Filter Bar (Picture 2 requirement) -->
+      <div style="display:flex; gap:0.8rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:center;">
+        <div style="flex:1; min-width:260px;">
+          <input 
+            type="text" 
+            id="kyc-search-input" 
+            class="form-input" 
+            placeholder="🔍 নাম, মোবাইল নম্বর বা NID নম্বর দিয়ে খুঁজুন..." 
+            value="${kycSearchQuery}" 
+            style="width:100%; padding:0.65rem 1rem; border-radius:var(--radius-md); font-size:0.9rem; background:var(--bg-card); border:1px solid var(--border-subtle);" 
+          />
+        </div>
+        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+          <button class="btn ${kycStatusFilter === 'ALL' ? 'btn-primary' : 'btn-outline'}" style="padding:0.45rem 0.85rem; font-size:0.82rem;" onclick="window.setKYCFilter('ALL')">
+            সব (${appState.kycQueue.length})
+          </button>
+          <button class="btn ${kycStatusFilter === 'PENDING' ? 'btn-primary' : 'btn-outline'}" style="padding:0.45rem 0.85rem; font-size:0.82rem; border-color:var(--cyan-400);" onclick="window.setKYCFilter('PENDING')">
+            অপেক্ষমাণ (${pendingCount})
+          </button>
+          <button class="btn ${kycStatusFilter === 'APPROVED' ? 'btn-primary' : 'btn-outline'}" style="padding:0.45rem 0.85rem; font-size:0.82rem; border-color:var(--emerald-400);" onclick="window.setKYCFilter('APPROVED')">
+            অনুমোদিত (${approvedCount})
+          </button>
+          <button class="btn ${kycStatusFilter === 'REJECTED' ? 'btn-primary' : 'btn-outline'}" style="padding:0.45rem 0.85rem; font-size:0.82rem; border-color:var(--red-500);" onclick="window.setKYCFilter('REJECTED')">
+            বাতিল (${rejectedCount})
+          </button>
+        </div>
       </div>
 
-      ${appState.kycQueue.length === 0 ? `
-        <div style="text-align: center; padding: 4.5rem 2rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle); margin-top: 1rem;">
-          <span style="font-size: 3.5rem; display: block; margin-bottom: 1rem;">📭</span>
-          <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-primary);">কোন e-KYC আবেদন জমা নেই</h3>
-          <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 1.5rem; font-size: 0.92rem; line-height: 1.6;">
-            নাগরিকরা <strong>safeCIZ</strong> মোবাইল অ্যাপের মাধ্যমে লাইভ ক্যামেরা সেলফি ও NID/জন্ম নিবন্ধন আপলোড করলে স্বয়ংক্রিয়ভাবে ক্লাউড থেকে রিয়েল-টাইমে এখানে জমা হবে।
+      ${filteredQueue.length === 0 ? `
+        <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle); margin-top: 1rem;">
+          <span style="font-size: 3rem; display: block; margin-bottom: 0.8rem;">📭</span>
+          <h3 style="font-size: 1.25rem; margin-bottom: 0.4rem; color: var(--text-primary);">কোনো আবেদন পাওয়া যায়নি</h3>
+          <p style="color: var(--text-secondary); max-width: 480px; margin: 0 auto; font-size: 0.88rem;">
+            ${kycSearchQuery ? 'আপনার সার্চকৃত তথ্যের সাথে কোনো আবেদন মিলছে না।' : 'বর্তমানে এই ফিল্টারে কোনো আবেদন জমা নেই।'}
           </p>
         </div>
       ` : `
         <div class="kyc-grid">
-          ${appState.kycQueue.map(kyc => `
+          ${filteredQueue.map(kyc => `
             <div class="kyc-card" onclick="window.openKYCDetail('${kyc.id}')" title="সম্পূর্ণ তথ্য দেখতে ক্লিক করুন">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
                 <span style="font-size:0.75rem; color:var(--text-muted);">⏱️ ${kyc.submittedAt}</span>
@@ -1086,7 +1121,7 @@ function renderKYCTab(container) {
                 ফেস ম্যাচ: <strong style="color:var(--emerald-400);">${kyc.livenessScore || '৯৯.৪%'}</strong>
               </p>
 
-              <!-- Document Preview: NID gets 3 photos (Selfie, Front, Back); Birth Certificate gets 2 photos (Selfie, Doc) -->
+              <!-- Document Preview: NID gets 3 photos; Birth Certificate gets 2 photos -->
               <div class="kyc-images-preview ${kyc.docType === 'NID' ? 'triple' : ''}">
                 <div class="kyc-img-box">
                   <img src="${kyc.selfieUrl}" alt="Live Camera Selfie" />
@@ -1094,7 +1129,7 @@ function renderKYCTab(container) {
                 </div>
                 <div class="kyc-img-box">
                   <img src="${kyc.docFrontUrl}" alt="Document Front" />
-                  <span class="kyc-img-label">${kyc.docType === 'NID' ? 'NID সামনের অংশ' : 'জন্ম সনদ (১টি কপি)'}</span>
+                  <span class="kyc-img-label">${kyc.docType === 'NID' ? 'NID সামনের অংশ' : 'জন্ম সনদ'}</span>
                 </div>
                 ${kyc.docType === 'NID' ? `
                   <div class="kyc-img-box">
@@ -1120,8 +1155,8 @@ function renderKYCTab(container) {
                   </button>
                 </div>
               ` : `
-                <div style="text-align:center; padding:0.5rem; background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); font-size:0.8rem; color:var(--text-muted);" onclick="event.stopPropagation()">
-                  যাচাই সম্পন্ন হয়েছে (${kyc.status})
+                <div style="text-align:center; padding:0.5rem; background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); font-size:0.8rem; font-weight:bold; color:${kyc.status === 'APPROVED' ? 'var(--emerald-400)' : 'var(--red-500)'};" onclick="event.stopPropagation()">
+                  ${kyc.status === 'APPROVED' ? '✓ যাচাই সম্পন্ন হয়েছে (APPROVED)' : '✕ আবেদনটি বাতিলকৃত (REJECTED)'}
                 </div>
               `}
             </div>
@@ -1134,6 +1169,26 @@ function renderKYCTab(container) {
     <div id="kyc-detail-modal-container"></div>
   `;
 
+  // Search input live listener
+  const searchInput = document.getElementById('kyc-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      kycSearchQuery = e.target.value;
+      renderKYCTab(container);
+      const newInput = document.getElementById('kyc-search-input');
+      if (newInput) {
+        newInput.focus();
+        newInput.selectionStart = newInput.selectionEnd = newInput.value.length;
+      }
+    });
+  }
+
+  // Filter change helper
+  window.setKYCFilter = (filter) => {
+    kycStatusFilter = filter;
+    renderKYCTab(container);
+  };
+
   // Quick Approve (Updates both KYC and Citizen Account in Firebase)
   window.approveKYC = async (id) => {
     const item = appState.kycQueue.find(k => k.id === id);
@@ -1141,7 +1196,7 @@ function renderKYCTab(container) {
       item.status = 'APPROVED';
       saveState(appState);
       await updateKYCStatusInFirebase(item.id, item.phone, 'APPROVED');
-      showToast(`${item.name}-এর অ্যাকাউন্ট অনুমোদিত হয়েছে এবং মোবাইল অ্যাপের সাথে সিঙ্ক হয়েছে!`, 'success');
+      showToast(`${item.name}-এর অ্যাকাউন্ট অনুমোদিত হয়েছে!`, 'success');
       renderAdminDashboard(document.getElementById('app'));
     }
   };
@@ -1158,7 +1213,7 @@ function renderKYCTab(container) {
     }
   };
 
-  // Open Full Detail Modal
+  // Open Full Detail Modal (Picture 1 & Picture 3 requirement)
   window.openKYCDetail = (id) => {
     const kyc = appState.kycQueue.find(k => k.id === id);
     if (!kyc) return;
@@ -1179,7 +1234,7 @@ function renderKYCTab(container) {
                   kyc.status === 'REJECTED' ? 'background:rgba(255,51,102,0.15); color:var(--red-500); border:1px solid rgba(255,51,102,0.3);' :
                   'background:rgba(0,242,254,0.15); color:var(--cyan-400); border:1px solid rgba(0,242,254,0.3);'
                 }">
-                  ${kyc.status === 'APPROVED' ? '✓ VERIFIED & APPROVED' : kyc.status === 'REJECTED' ? '✕ REJECTED' : '⏳ PENDING REVIEW'}
+                  ${kyc.status === 'APPROVED' ? '✓ APPROVED' : kyc.status === 'REJECTED' ? '✕ REJECTED' : '⏳ PENDING REVIEW'}
                 </span>
               </div>
               <p style="color:var(--text-secondary); font-size:0.85rem; margin:0;">
@@ -1189,39 +1244,48 @@ function renderKYCTab(container) {
             <button onclick="window.closeKYCDetail()" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-subtle); color:var(--text-muted); width:36px; height:36px; border-radius:50%; font-size:1.4rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
           </div>
 
-          <!-- Document Images Grid -->
+          <!-- Document Images Grid with Image Zoom Click (Picture 1 requirement) -->
           <h4 style="font-size:1.05rem; margin-bottom:0.8rem; color:var(--cyan-400); display:flex; align-items:center; gap:0.5rem;">
-            📷 আপলোডকৃত পরিচয়পত্র ও লাইভ বায়োমেট্রিক ছবি
+            📷 আপলোডকৃত পরিচয়পত্র ও লাইভ বায়োমেট্রিক ছবি (বড় করে দেখতে ছবিতে ক্লিক করুন)
           </h4>
 
           <div class="kyc-detail-images">
             <!-- 1. Live Selfie -->
-            <div class="kyc-detail-img-card">
+            <div class="kyc-detail-img-card" onclick="window.openImageZoom('${kyc.selfieUrl}', 'লাইভ ক্যামেরা সেলফি - ${kyc.name}')" style="cursor:zoom-in;" title="বড় করে দেখতে ক্লিক করুন">
               <img src="${kyc.selfieUrl}" alt="Live Camera Selfie" />
-              <div style="padding:0.8rem; background:#070d18;">
-                <strong style="font-size:0.85rem; display:block; color:var(--emerald-400);">● লাইভ ক্যামেরা সেলফি</strong>
-                <small style="color:var(--text-muted); font-size:0.75rem;">গ্যালারি বাইপাস ব্লকেজ সুরক্ষিত</small>
+              <div style="padding:0.8rem; background:#070d18; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong style="font-size:0.85rem; display:block; color:var(--emerald-400);">● লাইভ ক্যামেরা সেলফি</strong>
+                  <small style="color:var(--text-muted); font-size:0.75rem;">গ্যালারি বাইপাস ব্লকেজ সুরক্ষিত</small>
+                </div>
+                <span style="background:rgba(0,242,254,0.12); color:var(--cyan-400); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem;">🔍 জুম</span>
               </div>
             </div>
 
             <!-- 2. Front Photo -->
-            <div class="kyc-detail-img-card">
+            <div class="kyc-detail-img-card" onclick="window.openImageZoom('${kyc.docFrontUrl}', '${kyc.docType === 'NID' ? 'জাতীয় পরিচয়পত্র (সামনের অংশ)' : 'ডিজিটাল জন্ম নিবন্ধন সনদ'} - ${kyc.name}')" style="cursor:zoom-in;" title="বড় করে দেখতে ক্লিক করুন">
               <img src="${kyc.docFrontUrl}" alt="Document Front" />
-              <div style="padding:0.8rem; background:#070d18;">
-                <strong style="font-size:0.85rem; display:block; color:var(--cyan-400);">
-                  ● ${kyc.docType === 'NID' ? 'জাতীয় পরিচয়পত্র (সামনের অংশ)' : 'ডিজিটাল জন্ম নিবন্ধন সনদ'}
-                </strong>
-                <small style="color:var(--text-muted); font-size:0.75rem;">ছবি ও টেক্সট স্পষ্টতা যাচাইকৃত</small>
+              <div style="padding:0.8rem; background:#070d18; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong style="font-size:0.85rem; display:block; color:var(--cyan-400);">
+                    ● ${kyc.docType === 'NID' ? 'জাতীয় পরিচয়পত্র (সামনের অংশ)' : 'ডিজিটাল জন্ম নিবন্ধন সনদ'}
+                  </strong>
+                  <small style="color:var(--text-muted); font-size:0.75rem;">ছবি ও টেক্সট স্পষ্টতা যাচাইকৃত</small>
+                </div>
+                <span style="background:rgba(0,242,254,0.12); color:var(--cyan-400); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem;">🔍 জুম</span>
               </div>
             </div>
 
             <!-- 3. Back Photo (ONLY FOR NID) -->
             ${kyc.docType === 'NID' ? `
-              <div class="kyc-detail-img-card">
+              <div class="kyc-detail-img-card" onclick="window.openImageZoom('${kyc.docBackUrl || kyc.docFrontUrl}', 'জাতীয় পরিচয়পত্র (পেছনের অংশ) - ${kyc.name}')" style="cursor:zoom-in;" title="বড় করে দেখতে ক্লিক করুন">
                 <img src="${kyc.docBackUrl || kyc.docFrontUrl}" alt="NID Back" />
-                <div style="padding:0.8rem; background:#070d18;">
-                  <strong style="font-size:0.85rem; display:block; color:var(--cyan-400);">● জাতীয় পরিচয়পত্র (পেছনের অংশ)</strong>
-                  <small style="color:var(--text-muted); font-size:0.75rem;">ঠিকানা ও বারকোড যাচাই</small>
+                <div style="padding:0.8rem; background:#070d18; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong style="font-size:0.85rem; display:block; color:var(--cyan-400);">● জাতীয় পরিচয়পত্র (পেছনের অংশ)</strong>
+                    <small style="color:var(--text-muted); font-size:0.75rem;">ঠিকানা ও বারকোড যাচাই</small>
+                  </div>
+                  <span style="background:rgba(0,242,254,0.12); color:var(--cyan-400); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem;">🔍 জুম</span>
                 </div>
               </div>
             ` : ''}
@@ -1263,13 +1327,13 @@ function renderKYCTab(container) {
                 <td>পরিচয়পত্র / জন্ম নিবন্ধন নং:</td>
                 <td>
                   <code style="font-size:1.05rem; letter-spacing:1px; color:#fff; background:rgba(0,242,254,0.1); padding:0.2rem 0.6rem; border-radius:4px;">
-                    ${kyc.idNumber || '19982692018274619'}
+                    ${kyc.idNumber || 'তথ্য নেই'}
                   </code>
                 </td>
               </tr>
               <tr>
                 <td>জন্ম তারিখ:</td>
-                <td><strong>${kyc.dob || '১৫ আগস্ট ১৯৯৮'}</strong></td>
+                <td><strong>${kyc.dob || 'তথ্য নেই'}</strong></td>
               </tr>
               <tr>
                 <td>রক্তের গ্রুপ (Blood Group):</td>
@@ -1281,7 +1345,7 @@ function renderKYCTab(container) {
               </tr>
               <tr>
                 <td>বর্তমান ঠিকানা:</td>
-                <td>📍 ${kyc.address || 'ঢাকা, বাংলাদেশ'}</td>
+                <td>📍 ${kyc.address || 'তথ্য নেই'}</td>
               </tr>
               <tr>
                 <td>AI ফেস ম্যাচ ও লাইভনেস স্কোর:</td>
@@ -1294,17 +1358,35 @@ function renderKYCTab(container) {
             </tbody>
           </table>
 
-          <!-- Actions Bar -->
-          <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem; border-top:1px solid var(--border-subtle); padding-top:1.2rem;">
-            <button class="btn btn-outline" onclick="window.closeKYCDetail()">
-              উইন্ডো বন্ধ করুন
-            </button>
-            <button class="btn btn-outline" style="border-color:var(--red-500); color:var(--red-500);" onclick="window.rejectKYC('${kyc.id}'); window.closeKYCDetail();">
-              ✕ আবেদন বাতিল করুন (Reject)
-            </button>
-            <button class="btn btn-primary" onclick="window.approveKYC('${kyc.id}'); window.closeKYCDetail();">
-              ✓ অ্যাকাউন্ট অনুমোদন করুন (Approve)
-            </button>
+          <!-- Actions Bar (Picture 3 requirement: Clean actions once approved/rejected) -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-top:2rem; border-top:1px solid var(--border-subtle); padding-top:1.2rem;">
+            ${kyc.status === 'APPROVED' ? `
+              <div style="display:flex; align-items:center; gap:0.5rem; color:var(--emerald-400); font-weight:bold; font-size:0.95rem;">
+                <span style="font-size:1.3rem;">✅</span> এই অ্যাকাউন্টটি ইতোমধ্যে অনুমোদিত হয়েছে (APPROVED)
+              </div>
+            ` : kyc.status === 'REJECTED' ? `
+              <div style="display:flex; align-items:center; gap:0.5rem; color:var(--red-500); font-weight:bold; font-size:0.95rem;">
+                <span style="font-size:1.3rem;">❌</span> এই আবেদনটি ইতোমধ্যে বাতিল করা হয়েছে (REJECTED)
+              </div>
+            ` : `
+              <div style="display:flex; align-items:center; gap:0.5rem; color:var(--cyan-400); font-size:0.9rem;">
+                <span>⏳</span> আবেদনটি অ্যাডমিন অনুমোদনের জন্য অপেক্ষমাণ (PENDING)
+              </div>
+            `}
+
+            <div style="display:flex; gap:0.8rem; align-items:center;">
+              <button class="btn btn-outline" onclick="window.closeKYCDetail()">
+                উইন্ডো বন্ধ করুন
+              </button>
+              ${kyc.status === 'PENDING' ? `
+                <button class="btn btn-outline" style="border-color:var(--red-500); color:var(--red-500);" onclick="window.rejectKYC('${kyc.id}'); window.closeKYCDetail();">
+                  ✕ আবেদন বাতিল করুন (Reject)
+                </button>
+                <button class="btn btn-primary" onclick="window.approveKYC('${kyc.id}'); window.closeKYCDetail();">
+                  ✓ অ্যাকাউন্ট অনুমোদন করুন (Approve)
+                </button>
+              ` : ''}
+            </div>
           </div>
         </div>
       </div>
@@ -1316,6 +1398,37 @@ function renderKYCTab(container) {
     if (modalBox) modalBox.innerHTML = '';
   };
 }
+
+// Global Image Zoom Lightbox Function (Picture 1 requirement)
+window.openImageZoom = (imgUrl, title) => {
+  let zoomBox = document.getElementById('image-zoom-lightbox');
+  if (!zoomBox) {
+    zoomBox = document.createElement('div');
+    zoomBox.id = 'image-zoom-lightbox';
+    document.body.appendChild(zoomBox);
+  }
+  zoomBox.innerHTML = `
+    <div class="zoom-lightbox-overlay" onclick="window.closeImageZoom()">
+      <div class="zoom-lightbox-content" onclick="event.stopPropagation()">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.6rem;">
+          <strong style="color:var(--cyan-400); font-size:1.05rem;">${title || 'ডকুমেন্ট ছবি বিস্তারিত'}</strong>
+          <button class="btn btn-outline" style="padding:0.3rem 0.8rem; font-size:0.85rem;" onclick="window.closeImageZoom()">✕ বন্ধ করুন</button>
+        </div>
+        <div style="max-height:80vh; overflow:auto; text-align:center; background:#000; border-radius:var(--radius-md); padding:0.5rem;">
+          <img src="${imgUrl}" alt="High Resolution Document" />
+        </div>
+        <div style="text-align:center; margin-top:0.8rem;">
+          <small style="color:var(--text-muted);">ক্লিয়ার হাই-রেজ্যুলেশন প্রিভিউ (Optical Clarity Verified)</small>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+window.closeImageZoom = () => {
+  const zoomBox = document.getElementById('image-zoom-lightbox');
+  if (zoomBox) zoomBox.innerHTML = '';
+};
 
 // ----------------------------------------------------------
 // Tab 3: Police Station & Officer Generator
