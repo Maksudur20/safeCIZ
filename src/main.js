@@ -6,58 +6,205 @@ import L from 'leaflet';
    ========================================================== */
 
 // Initial Simulated State (Stored in localStorage)
-const STORAGE_KEY = 'safeciz_state_v1';
+const STORAGE_KEY = 'safeciz_state_v3';
+
+// List of 85+ Bangladesh Police Stations (DMP, CMP, RMP, KMP, SMP, BMP, GMP, RPMP & Major Districts)
+const bangladeshPoliceStations = [
+  // --- ঢাকা মেট্রোপলিটন পুলিশ (DMP - ৫০টি থানা) ---
+  "ধানমন্ডি মডেল থানা (Dhanmondi Model PS, DMP)",
+  "গুলশান থানা (Gulshan PS, DMP)",
+  "বনানী থানা (Banani PS, DMP)",
+  "উত্তরা পূর্ব থানা (Uttara East PS, DMP)",
+  "উত্তরা পশ্চিম থানা (Uttara West PS, DMP)",
+  "মিরপুর মডেল থানা (Mirpur Model PS, DMP)",
+  "পল্লবী থানা (Pallabi PS, DMP)",
+  "দারুস সালাম থানা (Darus Salam PS, DMP)",
+  "শাহ আলী থানা (Shah Ali PS, DMP)",
+  "কাফরুল থানা (Kafrul PS, DMP)",
+  "ভাষানটেক থানা (Bhasantek PS, DMP)",
+  "ক্যান্টনমেন্ট থানা (Cantonment PS, DMP)",
+  "তেজগাঁও মডেল থানা (Tejgaon Model PS, DMP)",
+  "তেজগাঁও শিল্পাঞ্চল থানা (Tejgaon Industrial PS, DMP)",
+  "রমনা মডেল থানা (Ramna Model PS, DMP)",
+  "শাহবাগ থানা (Shahbagh PS, DMP)",
+  "নিউ মার্কেট থানা (New Market PS, DMP)",
+  "কলাবাগান থানা (Kalabagan PS, DMP)",
+  "মোহাম্মদপুর থানা (Mohammadpur PS, DMP)",
+  "আদাবর থানা (Adabor PS, DMP)",
+  "হাজারীবাগ থানা (Hazaribagh PS, DMP)",
+  "মতিঝিল থানা (Motijheel PS, DMP)",
+  "পল্টন মডেল থানা (Paltan Model PS, DMP)",
+  "রামপুরা থানা (Rampura PS, DMP)",
+  "হাতিরঝিল থানা (Hatirjheel PS, DMP)",
+  "খিলগাঁও থানা (Khilgaon PS, DMP)",
+  "সবুজবাগ থানা (Sabujbagh PS, DMP)",
+  "মুগদা থানা (Mugda PS, DMP)",
+  "ডেমরা থানা (Demra PS, DMP)",
+  "যাত্রাবাড়ী থানা (Jatrabari PS, DMP)",
+  "কদমতলী থানা (Kadamtali PS, DMP)",
+  "শ্যামপুর থানা (Shyampur PS, DMP)",
+  "ওয়ারী থানা (Wari PS, DMP)",
+  "গেন্ডারিয়া থানা (Gendaria PS, DMP)",
+  "সূত্রাপুর থানা (Sutrapur PS, DMP)",
+  "কোতোয়ালী থানা, ঢাকা (Kotwali PS, Dhaka)",
+  "বংশাল থানা (Bangshal PS, DMP)",
+  "চকবাজার মডেল থানা (Chawkbazar Model PS, DMP)",
+  "লালবাগ থানা (Lalbagh PS, DMP)",
+  "কামরাঙ্গীরচর থানা (Kamrangirchar PS, DMP)",
+  "বাড্ডা থানা (Badda PS, DMP)",
+  "ভাটারা থানা (Vatara PS, DMP)",
+  "খিলক্ষেত থানা (Khilkhet PS, DMP)",
+  "বিমানবন্দর থানা (Airport PS, DMP)",
+  "তুরাগ থানা (Turag PS, DMP)",
+  "দক্ষিণখান থানা (Dakshinkhan PS, DMP)",
+  "উত্তরখান থানা (Uttarkhan PS, DMP)",
+  "রূপনগর থানা (Rupnagar PS, DMP)",
+  "শেরেবাংলা নগর থানা (Sher-e-Bangla Nagar PS, DMP)",
+  
+  // --- ঢাকা জেলা ও আশেপাশের প্রধান থানা ---
+  "সাভার মডেল থানা (Savar Model PS)",
+  "আশুলিয়া থানা (Ashulia PS)",
+  "কেরানীগঞ্জ মডেল থানা (Keraniganj Model PS)",
+  "দক্ষিণ কেরানীগঞ্জ থানা (South Keraniganj PS)",
+  "ধামরাই থানা (Dhamrai PS)",
+  
+  // --- গাজীপুর মেট্রোপলিটন (GMP) ও নারায়ণগঞ্জ ---
+  "গাজীপুর সদর থানা (Sadar PS, GMP)",
+  "টঙ্গী পূর্ব থানা (Tongi East PS, GMP)",
+  "টঙ্গী পশ্চিম থানা (Tongi West PS, GMP)",
+  "গাছা থানা (Gacha PS, GMP)",
+  "বাসন থানা (Bason PS, GMP)",
+  "কোনাবাড়ী থানা (Konabari PS, GMP)",
+  "কাশিমপুর থানা (Kashimpur PS, GMP)",
+  "পূবাইল থানা (Pubail PS, GMP)",
+  "নারায়ণগঞ্জ সদর মডেল থানা (Narayanganj Sadar Model PS)",
+  "ফতুল্লা মডেল থানা (Fatullah Model PS)",
+  "সিদ্ধিরগঞ্জ থানা (Siddhirganj PS)",
+  "রূপগঞ্জ থানা (Rupganj PS)",
+  
+  // --- চট্টগ্রাম মেট্রোপলিটন পুলিশ (CMP) ---
+  "কোতোয়ালী থানা, চট্টগ্রাম (Kotwali PS, CMP)",
+  "পাঁচলাইশ থানা, চট্টগ্রাম (Panchlaish PS, CMP)",
+  "ডবলমুরিং থানা, চট্টগ্রাম (Double Mooring PS, CMP)",
+  "পাহাড়তলী থানা, চট্টগ্রাম (Pahartali PS, CMP)",
+  "হালিশহর থানা, চট্টগ্রাম (Halishahar PS, CMP)",
+  "খুলশী থানা, চট্টগ্রাম (Khulshi PS, CMP)",
+  "বায়োজিদ বোস্তামী থানা (Bayezid Bostami PS, CMP)",
+  "পতেঙ্গা থানা, চট্টগ্রাম (Patenga PS, CMP)",
+  "ইপিজেড থানা, চট্টগ্রাম (EPZ PS, CMP)",
+  "বাকলিয়া থানা, চট্টগ্রাম (Bakalia PS, CMP)",
+  "চাঁন্দগাঁও থানা, চট্টগ্রাম (Chandgaon PS, CMP)",
+  
+  // --- সিলেট মেট্রোপলিটন পুলিশ (SMP) ---
+  "কোতোয়ালী মডেল থানা, সিলেট (Kotwali Model PS, SMP)",
+  "জালালাবাদ থানা, সিলেট (Jalalabad PS, SMP)",
+  "শাহপরাণ থানা, সিলেট (Shah Paran PS, SMP)",
+  "দক্ষিণ সুরমা থানা, সিলেট (South Surma PS, SMP)",
+  
+  // --- রাজশাহী মেট্রোপলিটন পুলিশ (RMP) ---
+  "বোয়ালিয়া মডেল থানা, রাজশাহী (Boalia Model PS, RMP)",
+  "রাজপাড়া থানা, রাজশাহী (Rajpara PS, RMP)",
+  "মতিহার থানা, রাজশাহী (Motihar PS, RMP)",
+  "শাহ মখদুম থানা, রাজশাহী (Shah Makhdum PS, RMP)",
+  
+  // --- খুলনা মেট্রোপলিটন পুলিশ (KMP) ---
+  "খুলনা সদর কোতোয়ালী থানা (Khulna Sadar Kotwali PS, KMP)",
+  "সোনাডাঙ্গা মডেল থানা (Sonadanga Model PS, KMP)",
+  "খালিশপুর থানা (Khalishpur PS, KMP)",
+  "দৌলতপুর থানা (Daulatpur PS, KMP)",
+  
+  // --- বরিশাল মেট্রোপলিটন পুলিশ (BMP) ---
+  "কোতোয়ালী মডেল থানা, বরিশাল (Kotwali Model PS, BMP)",
+  "বিমানবন্দর থানা, বরিশাল (Airport PS, BMP)",
+  "কাউনিয়া থানা, বরিশাল (Kawnia PS, BMP)",
+  
+  // --- রংপুর মেট্রোপলিটন পুলিশ (RPMP) ---
+  "কোতোয়ালী থানা, রংপুর (Kotwali PS, RPMP)",
+  "তাজহাট থানা, রংপুর (Tajhat PS, RPMP)",
+  
+  // --- বিভাগীয় ও অন্যান্য প্রধান জেলা সদর থানা ---
+  "ময়মনসিংহ কোতোয়ালী মডেল থানা (Mymensingh Kotwali Model PS)",
+  "কুমিল্লা কোতোয়ালী মডেল থানা (Cumilla Kotwali Model PS)",
+  "কক্সবাজার সদর মডেল থানা (Cox's Bazar Sadar Model PS)",
+  "বগুড়া সদর থানা (Bogura Sadar PS)",
+  "যশোর কোতোয়ালী মডেল থানা (Jashore Kotwali Model PS)",
+  "ফেনী মডেল থানা (Feni Model PS)",
+  "নোয়াখালী সুধারাম মডেল থানা (Sudharam Model PS, Noakhali)",
+  "ব্রাহ্মণবাড়িয়া সদর মডেল থানা (Brahmanbaria Sadar Model PS)",
+  "পাবনা সদর থানা (Pabna Sadar PS)",
+  "দিনাজপুর কোতোয়ালী থানা (Dinajpur Kotwali PS)",
+  "কুষ্টিয়া মডেল থানা (Kushtia Model PS)",
+  "টাঙ্গাইল সদর থানা (Tangail Sadar PS)",
+  "ফরিদপুর কোতোয়ালী থানা (Faridpur Kotwali PS)",
+  "সিরাজগঞ্জ সদর থানা (Sirajganj Sadar PS)",
+  "➕ অন্যান্য / নতুন থানা টাইপ করুন..."
+];
+
+const defaultKYCData = [
+  {
+    id: 'kyc-101',
+    name: 'সাদিয়া আফরিন (Sadia Afrin)',
+    phone: '01812-345678',
+    email: 'sadia.afrin@example.com',
+    idNumber: '19982692018274619',
+    dob: '১৫ আগস্ট ১৯৯৮',
+    address: 'বাড়ি ৪২, রোড ৭, ধানমন্ডি, ঢাকা',
+    bloodGroup: 'B+',
+    docType: 'NID',
+    selfieUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80',
+    docFrontUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
+    docBackUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
+    status: 'PENDING',
+    livenessScore: '99.4% (লাইভ ফেস নিশ্চিত)',
+    submittedAt: '১০ মিনিট আগে'
+  },
+  {
+    id: 'kyc-102',
+    name: 'তানভীর আহমেদ (Tanvir Ahmed)',
+    phone: '01711-987654',
+    email: 'tanvir.ahmed@example.com',
+    idNumber: '20052692018274620',
+    dob: '১০ মে ২০০৫',
+    address: 'সেক্টর ৪, রোড ১১, উত্তরা, ঢাকা',
+    bloodGroup: 'O+',
+    docType: 'BIRTH_CERT',
+    selfieUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
+    docFrontUrl: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=600&auto=format&fit=crop&q=80',
+    docBackUrl: null, // Birth Certificate needs only 1 document image
+    status: 'PENDING',
+    livenessScore: '98.5% (লাইভ ফেস নিশ্চিত)',
+    submittedAt: '২৫ মিনিট আগে'
+  },
+  {
+    id: 'kyc-103',
+    name: 'ফারহানা ইয়াসমিন (Farhana Yasmin)',
+    phone: '01914-112233',
+    email: 'farhana.y@example.com',
+    idNumber: '19952692018274625',
+    dob: '২২ মার্চ ১৯৯৫',
+    address: 'রোড ১২, গুলশান-২, ঢাকা',
+    bloodGroup: 'A+',
+    docType: 'NID',
+    selfieUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
+    docFrontUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80',
+    docBackUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
+    status: 'PENDING',
+    livenessScore: '99.8% (লাইভ ফেস নিশ্চিত)',
+    submittedAt: '১ ঘণ্টা আগে'
+  }
+];
 
 const defaultState = {
   lang: 'bn',
   adminAuth: false,
   activeTab: 'radar', // 'radar' | 'kyc' | 'police' | 'logs'
-  kycQueue: [
-    {
-      id: 'kyc-101',
-      name: 'সাদিয়া আফরিন (Sadia Afrin)',
-      phone: '01812-345678',
-      email: 'sadia.afrin@example.com',
-      docType: 'NID',
-      selfieUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
-      docFrontUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80',
-      docBackUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&auto=format&fit=crop&q=80',
-      status: 'PENDING',
-      livenessScore: '99.2%',
-      submittedAt: '১০ মিনিট আগে'
-    },
-    {
-      id: 'kyc-102',
-      name: 'তানভীর আহমেদ (Tanvir Ahmed)',
-      phone: '01711-987654',
-      email: 'tanvir.ahmed@example.com',
-      docType: 'BIRTH_CERT',
-      selfieUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-      docFrontUrl: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=400&auto=format&fit=crop&q=80',
-      docBackUrl: null,
-      status: 'PENDING',
-      livenessScore: '98.5%',
-      submittedAt: '২৫ মিনিট আগে'
-    },
-    {
-      id: 'kyc-103',
-      name: 'ফারহানা ইয়াসমিন (Farhana Yasmin)',
-      phone: '01914-112233',
-      email: 'farhana.y@example.com',
-      docType: 'NID',
-      selfieUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-      docFrontUrl: 'https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=400&auto=format&fit=crop&q=80',
-      docBackUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&auto=format&fit=crop&q=80',
-      status: 'APPROVED',
-      livenessScore: '99.8%',
-      submittedAt: '২ ঘণ্টা আগে'
-    }
-  ],
+  selectedKYC: null, // For detail modal
+  kycQueue: [...defaultKYCData],
   policeRoster: [
-    { id: 'pol-1', name: 'মোঃ রফিকুল ইসলাম', rank: 'Sub-Inspector (SI)', station: 'ধানমন্ডি থানা (Dhanmondi PS)', badge: 'BD-8841', username: 'pol_dhn_8841', status: 'ON_DUTY', lat: 23.7461, lng: 90.3742 },
+    { id: 'pol-1', name: 'মোঃ রফিকুল ইসলাম', rank: 'Sub-Inspector (SI)', station: 'ধানমন্ডি মডেল থানা (Dhanmondi Model PS)', badge: 'BD-8841', username: 'pol_dhn_8841', status: 'ON_DUTY', lat: 23.7461, lng: 90.3742 },
     { id: 'pol-2', name: 'শহীদুল আলম', rank: 'Assistant Sub-Inspector (ASI)', station: 'গুলশান থানা (Gulshan PS)', badge: 'BD-9204', username: 'pol_gul_9204', status: 'ON_DUTY', lat: 23.7925, lng: 90.4078 },
-    { id: 'pol-3', name: 'কাজী মাহমুদ হাসান', rank: 'Officer in Charge (OC)', station: 'রমনা মডেল থানা (Ramna PS)', badge: 'BD-7102', username: 'pol_ram_7102', status: 'ON_DUTY', lat: 23.7412, lng: 90.4011 },
-    { id: 'pol-4', name: 'নাসির উদ্দিন', rank: 'Constable', station: 'উত্তরা থানা (Uttara PS)', badge: 'BD-6019', username: 'pol_utt_6019', status: 'OFF_DUTY', lat: 23.8759, lng: 90.3795 }
+    { id: 'pol-3', name: 'কাজী মাহমুদ হাসান', rank: 'Officer in Charge (OC)', station: 'রমনা মডেল থানা (Ramna Model PS)', badge: 'BD-7102', username: 'pol_ram_7102', status: 'ON_DUTY', lat: 23.7412, lng: 90.4011 },
+    { id: 'pol-4', name: 'নাসির উদ্দিন', rank: 'Constable', station: 'উত্তরা পূর্ব থানা (Uttara East PS)', badge: 'BD-6019', username: 'pol_utt_6019', status: 'OFF_DUTY', lat: 23.8759, lng: 90.3795 }
   ],
   activeIncidents: [
     {
@@ -860,67 +1007,141 @@ function renderRadarTab(container) {
 // Tab 2: e-KYC Approval Queue
 // ----------------------------------------------------------
 function renderKYCTab(container) {
+  const pendingCount = appState.kycQueue.filter(k => k.status === 'PENDING').length;
+  const approvedCount = appState.kycQueue.filter(k => k.status === 'APPROVED').length;
+  const rejectedCount = appState.kycQueue.filter(k => k.status === 'REJECTED').length;
+
   container.innerHTML = `
     <div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:2rem;">
         <div>
           <h2 style="font-size:1.6rem; margin-bottom:0.3rem;">e-KYC ভেরিফিকেশন কিউ</h2>
-          <p style="color:var(--text-secondary); font-size:0.9rem;">লাইভ ক্যামেরা সেলফি ও পরিচয়পত্রের ছবি মিলিয়ে অ্যাকাউন্ট অনুমোদন বা বাতিল করুন।</p>
+          <p style="color:var(--text-secondary); font-size:0.9rem;">
+            লাইভ ক্যামেরা সেলফি ও পরিচয়পত্রের ছবি (NID সামনে ও পেছনে, জন্ম নিবন্ধনের ১টি কপি) মিলিয়ে অনুমোদন বা বাতিল করুন।
+          </p>
         </div>
-        <span style="background:rgba(0,242,254,0.1); color:var(--cyan-400); border:1px solid rgba(0,242,254,0.3); padding:0.4rem 1rem; border-radius:var(--radius-full); font-size:0.85rem; font-weight:bold;">
-          অপেক্ষমাণ আবেদন: ${appState.kycQueue.filter(k => k.status === 'PENDING').length} জন
-        </span>
+
+        <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+          <button class="btn btn-outline" style="border-color:var(--red-500); color:var(--red-500); padding:0.45rem 0.9rem; font-size:0.82rem;" onclick="window.clearAllDemoKYC()">
+            🗑️ সব ডেমো ডাটা মুছুন (Clear All)
+          </button>
+          <button class="btn btn-outline" style="padding:0.45rem 0.9rem; font-size:0.82rem;" onclick="window.restoreDemoKYC()">
+            🔄 ডেমো ডাটা রিস্টোর
+          </button>
+          <span style="background:rgba(0,242,254,0.1); color:var(--cyan-400); border:1px solid rgba(0,242,254,0.3); padding:0.45rem 1rem; border-radius:var(--radius-full); font-size:0.85rem; font-weight:bold;">
+            অপেক্ষমাণ: ${pendingCount} জন
+          </span>
+        </div>
       </div>
 
-      <div class="kyc-grid">
-        ${appState.kycQueue.map(kyc => `
-          <div class="kyc-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
-              <span style="font-size:0.75rem; color:var(--text-muted);">${kyc.submittedAt}</span>
-              <span style="padding:0.2rem 0.6rem; border-radius:var(--radius-sm); font-size:0.75rem; font-weight:bold; ${
-                kyc.status === 'APPROVED' ? 'background:rgba(0,230,118,0.15); color:var(--emerald-400);' :
-                kyc.status === 'REJECTED' ? 'background:rgba(255,51,102,0.15); color:var(--red-500);' :
-                'background:rgba(0,242,254,0.15); color:var(--cyan-400);'
-              }">
-                ${kyc.status === 'APPROVED' ? '✓ APPROVED' : kyc.status === 'REJECTED' ? '✕ REJECTED' : '⏳ PENDING'}
-              </span>
-            </div>
-
-            <h3 style="font-size:1.2rem; margin-bottom:0.2rem;">${kyc.name}</h3>
-            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.2rem;">📞 ${kyc.phone}</p>
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.8rem;">আইডি টাইপ: <strong>${kyc.docType}</strong> | ফেস ম্যাচ: <strong style="color:var(--emerald-400);">${kyc.livenessScore}</strong></p>
-
-            <div class="kyc-images-preview">
-              <div class="kyc-img-box">
-                <img src="${kyc.selfieUrl}" alt="Live Camera Selfie" />
-                <span class="kyc-img-label">লাইভ সেলফি (ক্যামেরা)</span>
-              </div>
-              <div class="kyc-img-box">
-                <img src="${kyc.docFrontUrl}" alt="ID Document Front" />
-                <span class="kyc-img-label">${kyc.docType} সামনের অংশ</span>
-              </div>
-            </div>
-
-            ${kyc.status === 'PENDING' ? `
-              <div class="kyc-actions">
-                <button class="btn btn-outline" style="border-color:var(--red-500); color:var(--red-500);" onclick="window.rejectKYC('${kyc.id}')">
-                  ✕ বাতিল (Reject)
-                </button>
-                <button class="btn btn-primary" onclick="window.approveKYC('${kyc.id}')">
-                  ✓ অনুমোদন (Approve)
-                </button>
-              </div>
-            ` : `
-              <div style="text-align:center; padding:0.5rem; background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); font-size:0.8rem; color:var(--text-muted);">
-                যাচাই সম্পন্ন হয়েছে
-              </div>
-            `}
-          </div>
-        `).join('')}
+      <!-- Quick Stats Filter -->
+      <div style="display:flex; gap:1rem; margin-bottom:1.5rem; font-size:0.85rem;">
+        <span style="color:var(--text-muted);">মোট আবেদন: <strong>${appState.kycQueue.length}</strong></span> |
+        <span style="color:var(--cyan-400);">অপেক্ষমাণ (Pending): <strong>${pendingCount}</strong></span> |
+        <span style="color:var(--emerald-400);">অনুমোদিত (Approved): <strong>${approvedCount}</strong></span> |
+        <span style="color:var(--red-500);">বাতিল (Rejected): <strong>${rejectedCount}</strong></span>
       </div>
+
+      ${appState.kycQueue.length === 0 ? `
+        <div style="text-align: center; padding: 4.5rem 2rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle); margin-top: 1rem;">
+          <span style="font-size: 3.5rem; display: block; margin-bottom: 1rem;">📭</span>
+          <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-primary);">কোন e-KYC আবেদন জমা নেই</h3>
+          <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 1.5rem; font-size: 0.92rem; line-height: 1.6;">
+            সব ডেমো ডাটা পরিষ্কার করা হয়েছে। নাগরিকরা <strong>safeCIZ</strong> মোবাইল অ্যাপের মাধ্যমে লাইভ ক্যামেরা সেলফি ও NID/জন্ম নিবন্ধন আপলোড করলে স্বয়ংক্রিয়ভাবে ক্লাউড থেকে এখানে জমা হবে।
+          </p>
+          <button class="btn btn-primary" onclick="window.restoreDemoKYC()">
+            🔄 টেস্ট ডেমো ডাটা ফিরিয়ে আনুন
+          </button>
+        </div>
+      ` : `
+        <div class="kyc-grid">
+          ${appState.kycQueue.map(kyc => `
+            <div class="kyc-card" onclick="window.openKYCDetail('${kyc.id}')" title="সম্পূর্ণ তথ্য দেখতে ক্লিক করুন">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+                <span style="font-size:0.75rem; color:var(--text-muted);">⏱️ ${kyc.submittedAt}</span>
+                <span style="padding:0.25rem 0.65rem; border-radius:var(--radius-sm); font-size:0.75rem; font-weight:bold; ${
+                  kyc.status === 'APPROVED' ? 'background:rgba(0,230,118,0.15); color:var(--emerald-400);' :
+                  kyc.status === 'REJECTED' ? 'background:rgba(255,51,102,0.15); color:var(--red-500);' :
+                  'background:rgba(0,242,254,0.15); color:var(--cyan-400);'
+                }">
+                  ${kyc.status === 'APPROVED' ? '✓ APPROVED' : kyc.status === 'REJECTED' ? '✕ REJECTED' : '⏳ PENDING'}
+                </span>
+              </div>
+
+              <h3 style="font-size:1.2rem; margin-bottom:0.25rem;">${kyc.name}</h3>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.25rem;">📞 ${kyc.phone}</p>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.8rem;">
+                ডকুমেন্ট: <strong style="color:var(--cyan-400);">${kyc.docType === 'NID' ? 'NID (উভয় পাশ)' : 'জন্ম নিবন্ধন (১টি)'}</strong> | 
+                ফেস ম্যাচ: <strong style="color:var(--emerald-400);">${kyc.livenessScore || '৯৯.৪%'}</strong>
+              </p>
+
+              <!-- Document Preview: NID gets 3 photos (Selfie, Front, Back); Birth Certificate gets 2 photos (Selfie, Doc) -->
+              <div class="kyc-images-preview ${kyc.docType === 'NID' ? 'triple' : ''}">
+                <div class="kyc-img-box">
+                  <img src="${kyc.selfieUrl}" alt="Live Camera Selfie" />
+                  <span class="kyc-img-label">লাইভ সেলফি (ক্যামেরা)</span>
+                </div>
+                <div class="kyc-img-box">
+                  <img src="${kyc.docFrontUrl}" alt="Document Front" />
+                  <span class="kyc-img-label">${kyc.docType === 'NID' ? 'NID সামনের অংশ' : 'জন্ম সনদ (১টি কপি)'}</span>
+                </div>
+                ${kyc.docType === 'NID' ? `
+                  <div class="kyc-img-box">
+                    <img src="${kyc.docBackUrl || kyc.docFrontUrl}" alt="NID Back" />
+                    <span class="kyc-img-label">NID পেছনের অংশ</span>
+                  </div>
+                ` : ''}
+              </div>
+
+              <div style="margin: 0.8rem 0 0.5rem; text-align:center;">
+                <span style="font-size:0.8rem; color:var(--cyan-400); font-weight:600; text-decoration:underline;">
+                  🔍 সম্পূর্ণ প্রোফাইল ও ডকুমেন্টস যাচাই করুন &rarr;
+                </span>
+              </div>
+
+              ${kyc.status === 'PENDING' ? `
+                <div class="kyc-actions" onclick="event.stopPropagation()">
+                  <button class="btn btn-outline" style="border-color:var(--red-500); color:var(--red-500);" onclick="window.rejectKYC('${kyc.id}')">
+                    ✕ বাতিল (Reject)
+                  </button>
+                  <button class="btn btn-primary" onclick="window.approveKYC('${kyc.id}')">
+                    ✓ অনুমোদন (Approve)
+                  </button>
+                </div>
+              ` : `
+                <div style="text-align:center; padding:0.5rem; background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); font-size:0.8rem; color:var(--text-muted);" onclick="event.stopPropagation()">
+                  যাচাই সম্পন্ন হয়েছে (${kyc.status})
+                </div>
+              `}
+            </div>
+          `).join('')}
+        </div>
+      `}
     </div>
+
+    <!-- Full KYC Profile Details Modal -->
+    <div id="kyc-detail-modal-container"></div>
   `;
 
+  // Clear demo data
+  window.clearAllDemoKYC = () => {
+    if (confirm('আপনি কি সব ডেমো e-KYC ডাটা মুছে ফেলতে চান?')) {
+      appState.kycQueue = [];
+      saveState(appState);
+      showToast('সব ডেমো ডাটা সফলভাবে মুছে ফেলা হয়েছে!', 'info');
+      renderAdminDashboard(document.getElementById('app'));
+    }
+  };
+
+  // Restore demo data
+  window.restoreDemoKYC = () => {
+    appState.kycQueue = [...defaultKYCData];
+    saveState(appState);
+    showToast('টেস্ট ডেমো ডাটা রিস্টোর করা হয়েছে!', 'success');
+    renderAdminDashboard(document.getElementById('app'));
+  };
+
+  // Quick Approve
   window.approveKYC = (id) => {
     const item = appState.kycQueue.find(k => k.id === id);
     if (item) {
@@ -931,6 +1152,7 @@ function renderKYCTab(container) {
     }
   };
 
+  // Quick Reject
   window.rejectKYC = (id) => {
     const item = appState.kycQueue.find(k => k.id === id);
     if (item) {
@@ -939,6 +1161,164 @@ function renderKYCTab(container) {
       showToast(`${item.name}-এর আবেদন বাতিল করা হয়েছে (তথ্য ভুল)`, 'alert');
       renderAdminDashboard(document.getElementById('app'));
     }
+  };
+
+  // Open Full Detail Modal
+  window.openKYCDetail = (id) => {
+    const kyc = appState.kycQueue.find(k => k.id === id);
+    if (!kyc) return;
+
+    const modalBox = document.getElementById('kyc-detail-modal-container');
+    if (!modalBox) return;
+
+    modalBox.innerHTML = `
+      <div class="kyc-detail-overlay" id="kyc-active-overlay" onclick="window.closeKYCDetail(event)">
+        <div class="kyc-detail-box" onclick="event.stopPropagation()">
+          <!-- Modal Header -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; border-bottom:1px solid var(--border-subtle); padding-bottom:1rem;">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:0.3rem;">
+                <h2 style="font-size:1.6rem; color:var(--text-primary); margin:0;">${kyc.name}</h2>
+                <span style="padding:0.25rem 0.75rem; border-radius:var(--radius-sm); font-size:0.8rem; font-weight:bold; ${
+                  kyc.status === 'APPROVED' ? 'background:rgba(0,230,118,0.15); color:var(--emerald-400); border:1px solid rgba(0,230,118,0.3);' :
+                  kyc.status === 'REJECTED' ? 'background:rgba(255,51,102,0.15); color:var(--red-500); border:1px solid rgba(255,51,102,0.3);' :
+                  'background:rgba(0,242,254,0.15); color:var(--cyan-400); border:1px solid rgba(0,242,254,0.3);'
+                }">
+                  ${kyc.status === 'APPROVED' ? '✓ VERIFIED & APPROVED' : kyc.status === 'REJECTED' ? '✕ REJECTED' : '⏳ PENDING REVIEW'}
+                </span>
+              </div>
+              <p style="color:var(--text-secondary); font-size:0.85rem; margin:0;">
+                আবেদন ট্র্যাকিং আইডি: <code>#${kyc.id}</code> | জমার সময়: <strong>${kyc.submittedAt}</strong>
+              </p>
+            </div>
+            <button onclick="window.closeKYCDetail()" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-subtle); color:var(--text-muted); width:36px; height:36px; border-radius:50%; font-size:1.4rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
+          </div>
+
+          <!-- Document Images Grid -->
+          <h4 style="font-size:1.05rem; margin-bottom:0.8rem; color:var(--cyan-400); display:flex; align-items:center; gap:0.5rem;">
+            📷 আপলোডকৃত পরিচয়পত্র ও লাইভ বায়োমেট্রিক ছবি
+          </h4>
+
+          <div class="kyc-detail-images">
+            <!-- 1. Live Selfie -->
+            <div class="kyc-detail-img-card">
+              <img src="${kyc.selfieUrl}" alt="Live Camera Selfie" />
+              <div style="padding:0.8rem; background:#070d18;">
+                <strong style="font-size:0.85rem; display:block; color:var(--emerald-400);">● লাইভ ক্যামেরা সেলফি</strong>
+                <small style="color:var(--text-muted); font-size:0.75rem;">গ্যালারি বাইপাস ব্লকেজ সুরক্ষিত</small>
+              </div>
+            </div>
+
+            <!-- 2. Front Photo -->
+            <div class="kyc-detail-img-card">
+              <img src="${kyc.docFrontUrl}" alt="Document Front" />
+              <div style="padding:0.8rem; background:#070d18;">
+                <strong style="font-size:0.85rem; display:block; color:var(--cyan-400);">
+                  ● ${kyc.docType === 'NID' ? 'জাতীয় পরিচয়পত্র (সামনের অংশ)' : 'ডিজিটাল জন্ম নিবন্ধন সনদ'}
+                </strong>
+                <small style="color:var(--text-muted); font-size:0.75rem;">ছবি ও টেক্সট স্পষ্টতা যাচাইকৃত</small>
+              </div>
+            </div>
+
+            <!-- 3. Back Photo (ONLY FOR NID) -->
+            ${kyc.docType === 'NID' ? `
+              <div class="kyc-detail-img-card">
+                <img src="${kyc.docBackUrl || kyc.docFrontUrl}" alt="NID Back" />
+                <div style="padding:0.8rem; background:#070d18;">
+                  <strong style="font-size:0.85rem; display:block; color:var(--cyan-400);">● জাতীয় পরিচয়পত্র (পেছনের অংশ)</strong>
+                  <small style="color:var(--text-muted); font-size:0.75rem;">ঠিকানা ও বারকোড যাচাই</small>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Full Personal Information Table -->
+          <h4 style="font-size:1.05rem; margin:1.8rem 0 0.8rem; color:var(--cyan-400);">
+            📋 আবেদনকারীর পূর্ণাঙ্গ জীবনবৃত্তান্ত ও বায়োডাটা
+          </h4>
+
+          <table class="kyc-info-table">
+            <tbody>
+              <tr>
+                <td>আবেদনকারীর পুরো নাম:</td>
+                <td><strong style="font-size:1.05rem;">${kyc.name}</strong></td>
+              </tr>
+              <tr>
+                <td>মোবাইল নম্বর:</td>
+                <td>
+                  <a href="tel:${kyc.phone}" style="color:var(--cyan-400); font-weight:bold; font-family:var(--font-mono);">
+                    📞 ${kyc.phone}
+                  </a>
+                  <small style="color:var(--text-muted); margin-left:0.5rem;">(সরাসরি কল করতে ক্লিক করুন)</small>
+                </td>
+              </tr>
+              <tr>
+                <td>ইমেইল অ্যাড্রেস:</td>
+                <td><code>${kyc.email || 'তথ্য দেওয়া হয়নি'}</code></td>
+              </tr>
+              <tr>
+                <td>পরিচয়পত্রের ধরন:</td>
+                <td>
+                  <strong style="color:var(--cyan-400);">
+                    ${kyc.docType === 'NID' ? 'জাতীয় পরিচয়পত্র (NID - উভয় পাশ যাচাই)' : 'অনলাইন ডিজিটাল জন্ম নিবন্ধন সনদ (১টি কপি)'}
+                  </strong>
+                </td>
+              </tr>
+              <tr>
+                <td>পরিচয়পত্র / জন্ম নিবন্ধন নং:</td>
+                <td>
+                  <code style="font-size:1.05rem; letter-spacing:1px; color:#fff; background:rgba(0,242,254,0.1); padding:0.2rem 0.6rem; border-radius:4px;">
+                    ${kyc.idNumber || '19982692018274619'}
+                  </code>
+                </td>
+              </tr>
+              <tr>
+                <td>জন্ম তারিখ:</td>
+                <td><strong>${kyc.dob || '১৫ আগস্ট ১৯৯৮'}</strong></td>
+              </tr>
+              <tr>
+                <td>রক্তের গ্রুপ (Blood Group):</td>
+                <td>
+                  <span style="background:rgba(255,51,102,0.15); color:var(--red-500); font-weight:bold; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.9rem;">
+                    🩸 ${kyc.bloodGroup || 'B+'}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>বর্তমান ঠিকানা:</td>
+                <td>📍 ${kyc.address || 'ঢাকা, বাংলাদেশ'}</td>
+              </tr>
+              <tr>
+                <td>AI ফেস ম্যাচ ও লাইভনেস স্কোর:</td>
+                <td>
+                  <span style="color:var(--emerald-400); font-weight:bold; font-size:1rem;">
+                    🎯 ${kyc.livenessScore || '৯৯.৪% (আসল জীবন্ত মানুষ নিশ্চিত)'}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Actions Bar -->
+          <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem; border-top:1px solid var(--border-subtle); padding-top:1.2rem;">
+            <button class="btn btn-outline" onclick="window.closeKYCDetail()">
+              উইন্ডো বন্ধ করুন
+            </button>
+            <button class="btn btn-outline" style="border-color:var(--red-500); color:var(--red-500);" onclick="window.rejectKYC('${kyc.id}'); window.closeKYCDetail();">
+              ✕ আবেদন বাতিল করুন (Reject)
+            </button>
+            <button class="btn btn-primary" onclick="window.approveKYC('${kyc.id}'); window.closeKYCDetail();">
+              ✓ অ্যাকাউন্ট অনুমোদন করুন (Approve)
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  window.closeKYCDetail = () => {
+    const modalBox = document.getElementById('kyc-detail-modal-container');
+    if (modalBox) modalBox.innerHTML = '';
   };
 }
 
@@ -952,19 +1332,21 @@ function renderPoliceTab(container) {
       <div class="police-form-card">
         <h3 style="font-size: 1.3rem; margin-bottom: 0.4rem;">নতুন পুলিশ অফিসার যুক্ত করুন</h3>
         <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem;">
-          অফিসারের জন্য স্বয়ংক্রিয় ইউজারনেম ও সিকিউর পাসওয়ার্ড তৈরি করা হবে।
+          বাংলাদেশের ৮৫+ থানা থেকে নির্বাচন করুন অথবা নতুন থানা টাইপ করে অটো-ক্রেডেনশিয়াল জেনারেট করুন।
         </p>
 
         <form id="create-police-form">
           <div class="form-group">
-            <label>থানা নির্বাচন করুন</label>
+            <label>থানা নির্বাচন করুন (${bangladeshPoliceStations.length - 1}+ থানা তালিকাভুক্ত)</label>
             <select id="pol-station" class="form-input" required>
-              <option value="ধানমন্ডি থানা (Dhanmondi PS)">ধানমন্ডি থানা (Dhanmondi PS)</option>
-              <option value="গুলশান থানা (Gulshan PS)">গুলশান থানা (Gulshan PS)</option>
-              <option value="রমনা মডেল থানা (Ramna PS)">রমনা মডেল থানা (Ramna PS)</option>
-              <option value="উত্তরা থানা (Uttara PS)">উত্তরা থানা (Uttara PS)</option>
-              <option value="মিরপুর মডেল থানা (Mirpur PS)">মিরপুর মডেল থানা (Mirpur PS)</option>
+              ${bangladeshPoliceStations.map(st => `<option value="${st}">${st}</option>`).join('')}
             </select>
+          </div>
+
+          <!-- Custom Station Input (Revealed if 'অন্যান্য' chosen) -->
+          <div class="form-group" id="pol-custom-station-wrap" style="display:none;">
+            <label style="color:var(--cyan-400);">নতুন থানার নাম লিখুন (Custom Station Name):</label>
+            <input type="text" id="pol-custom-station" class="form-input" placeholder="যেমন: সাভার মডেল থানা / কক্সবাজার সদর থানা..." />
           </div>
 
           <div class="form-group">
@@ -977,8 +1359,9 @@ function renderPoliceTab(container) {
             <select id="pol-rank" class="form-input" required>
               <option value="Sub-Inspector (SI)">Sub-Inspector (SI)</option>
               <option value="Assistant Sub-Inspector (ASI)">Assistant Sub-Inspector (ASI)</option>
-              <option value="Inspector / OC">Inspector / OC</option>
+              <option value="Inspector / OC">Officer in Charge (OC / Inspector)</option>
               <option value="Constable">Constable</option>
+              <option value="Sergeant">Traffic Sergeant</option>
             </select>
           </div>
 
@@ -1041,17 +1424,46 @@ function renderPoliceTab(container) {
     </div>
   `;
 
+  // Dynamic Station Select Change Listener
+  const stationSelect = document.getElementById('pol-station');
+  const customWrap = document.getElementById('pol-custom-station-wrap');
+  const customInput = document.getElementById('pol-custom-station');
+
+  if (stationSelect && customWrap) {
+    stationSelect.addEventListener('change', () => {
+      if (stationSelect.value.includes('অন্যান্য') || stationSelect.value.includes('নতুন থানা')) {
+        customWrap.style.display = 'block';
+        if (customInput) customInput.focus();
+      } else {
+        customWrap.style.display = 'none';
+      }
+    });
+  }
+
   // Form submission
   document.getElementById('create-police-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('pol-name').value;
-    const station = document.getElementById('pol-station').value;
+    let station = document.getElementById('pol-station').value;
+    
+    // Check if custom station was typed
+    if (station.includes('অন্যান্য') || station.includes('নতুন থানা')) {
+      const customVal = customInput ? customInput.value.trim() : '';
+      if (customVal) {
+        station = customVal;
+        // Optionally insert into station list
+        if (!bangladeshPoliceStations.includes(customVal)) {
+          bangladeshPoliceStations.splice(bangladeshPoliceStations.length - 1, 0, customVal);
+        }
+      }
+    }
+
     const rank = document.getElementById('pol-rank').value;
     const badge = document.getElementById('pol-badge').value;
 
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const stationShort = station.includes('Dhanmondi') ? 'dhn' : station.includes('Gulshan') ? 'gul' : station.includes('Ramna') ? 'ram' : 'pol';
-    const username = `${stationShort}_${badge.replace(/\D/g, '') || randomSuffix}`;
+    const stationCode = badge.replace(/\D/g, '') || randomSuffix;
+    const username = `pol_${stationCode}`;
     const password = `Safe#${Math.random().toString(36).slice(-6)}@26`;
 
     const newOfficer = {
@@ -1076,7 +1488,8 @@ function renderPoliceTab(container) {
         <div>
           <small style="color:var(--text-muted); display:block;">অফিসারকে এই তথ্য দিন:</small>
           <span>ইউজারনেম: <code>${username}</code></span><br/>
-          <span>পাসওয়ার্ড: <code>${password}</code></span>
+          <span>পাসওয়ার্ড: <code>${password}</code></span><br/>
+          <span>নিযুক্ত থানা: <strong>${station}</strong></span>
         </div>
         <button class="btn btn-outline" style="padding:0.4rem 0.8rem; font-size:0.78rem;" id="copy-cred-btn">
           📋 কপি করুন
@@ -1085,7 +1498,7 @@ function renderPoliceTab(container) {
     `;
 
     document.getElementById('copy-cred-btn').addEventListener('click', () => {
-      navigator.clipboard.writeText(`safeCIZ Police Login:\nUsername: ${username}\nPassword: ${password}`);
+      navigator.clipboard.writeText(`safeCIZ Police Login:\nStation: ${station}\nUsername: ${username}\nPassword: ${password}`);
       showToast('ক্রেডেনশিয়াল ক্লিপবোর্ডে কপি হয়েছে!', 'success');
     });
 
