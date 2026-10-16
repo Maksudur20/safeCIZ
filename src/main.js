@@ -1,5 +1,14 @@
 import './style.css';
 import L from 'leaflet';
+import { 
+  subscribeToKYCQueue, 
+  updateKYCStatusInFirebase, 
+  clearAllKYCFromFirebase, 
+  savePoliceOfficerToFirebase, 
+  subscribeToPoliceRoster, 
+  subscribeToLiveIncidents, 
+  resolveSOSIncidentInFirebase 
+} from './firebase.js';
 
 /* ==========================================================
    safeCIZ — Client-Side Router, State & Translation Engine
@@ -227,6 +236,43 @@ function saveState(state) {
 }
 
 let appState = getState();
+
+// ==========================================================
+// REALTIME FIREBASE CLOUD SUBSCRIPTIONS
+// ==========================================================
+subscribeToKYCQueue((cloudKYC) => {
+  if (Array.isArray(cloudKYC)) {
+    appState.kycQueue = cloudKYC;
+    saveState(appState);
+    // If Admin KYC Tab is open, re-render
+    const tabContent = document.getElementById('admin-tab-content');
+    if (tabContent && appState.activeTab === 'kyc') {
+      renderKYCTab(tabContent);
+    }
+  }
+});
+
+subscribeToLiveIncidents((cloudIncidents) => {
+  if (Array.isArray(cloudIncidents)) {
+    appState.activeIncidents = cloudIncidents;
+    saveState(appState);
+    const tabContent = document.getElementById('admin-tab-content');
+    if (tabContent && appState.activeTab === 'radar') {
+      renderRadarTab(tabContent);
+    }
+  }
+});
+
+subscribeToPoliceRoster((cloudPolice) => {
+  if (Array.isArray(cloudPolice) && cloudPolice.length > 0) {
+    appState.policeRoster = cloudPolice;
+    saveState(appState);
+    const tabContent = document.getElementById('admin-tab-content');
+    if (tabContent && appState.activeTab === 'police') {
+      renderPoliceTab(tabContent);
+    }
+  }
+});
 
 // ==========================================================
 // BILINGUAL TRANSLATION DICTIONARY
@@ -1003,9 +1049,10 @@ function renderRadarTab(container) {
     showToast('নিকটস্থ পেট্রোল গাড়িকে গুগল ম্যাপস নেভিগেশন ও সাইরেন অ্যালার্ট পাঠানো হয়েছে!', 'success');
   };
 
-  window.resolveIncident = (incId) => {
+  window.resolveIncident = async (incId) => {
     appState.activeIncidents = appState.activeIncidents.filter(i => i.id !== incId);
     saveState(appState);
+    await resolveSOSIncidentInFirebase(incId);
     showToast('এসওএস অ্যালার্ট সফলভাবে সমাধান ও নিষ্পত্তি করা হয়েছে!', 'success');
     renderAdminDashboard(document.getElementById('app'));
   };
@@ -1153,12 +1200,13 @@ function renderKYCTab(container) {
     <div id="kyc-detail-modal-container"></div>
   `;
 
-  // Clear demo data
-  window.clearAllDemoKYC = () => {
-    if (confirm('আপনি কি সব ডেমো e-KYC ডাটা মুছে ফেলতে চান?')) {
+  // Clear all KYC data from local and Firebase
+  window.clearAllDemoKYC = async () => {
+    if (confirm('আপনি কি সব e-KYC ডাটা মুছে ফেলতে চান?')) {
       appState.kycQueue = [];
       saveState(appState);
-      showToast('সব ডেমো ডাটা সফলভাবে মুছে ফেলা হয়েছে!', 'info');
+      await clearAllKYCFromFirebase();
+      showToast('সব e-KYC ডাটা ক্লাউড থেকে মুছে ফেলা হয়েছে!', 'info');
       renderAdminDashboard(document.getElementById('app'));
     }
   };
@@ -1171,24 +1219,26 @@ function renderKYCTab(container) {
     renderAdminDashboard(document.getElementById('app'));
   };
 
-  // Quick Approve
-  window.approveKYC = (id) => {
+  // Quick Approve (Updates both KYC and Citizen Account in Firebase)
+  window.approveKYC = async (id) => {
     const item = appState.kycQueue.find(k => k.id === id);
     if (item) {
       item.status = 'APPROVED';
       saveState(appState);
-      showToast(`${item.name}-এর অ্যাকাউন্ট অনুমোদিত হয়েছে!`, 'success');
+      await updateKYCStatusInFirebase(item.id, item.phone, 'APPROVED');
+      showToast(`${item.name}-এর অ্যাকাউন্ট অনুমোদিত হয়েছে এবং মোবাইল অ্যাপের সাথে সিঙ্ক হয়েছে!`, 'success');
       renderAdminDashboard(document.getElementById('app'));
     }
   };
 
-  // Quick Reject
-  window.rejectKYC = (id) => {
+  // Quick Reject (Updates both KYC and Citizen Account in Firebase)
+  window.rejectKYC = async (id) => {
     const item = appState.kycQueue.find(k => k.id === id);
     if (item) {
       item.status = 'REJECTED';
       saveState(appState);
-      showToast(`${item.name}-এর আবেদন বাতিল করা হয়েছে (তথ্য ভুল)`, 'alert');
+      await updateKYCStatusInFirebase(item.id, item.phone, 'REJECTED');
+      showToast(`${item.name}-এর আবেদন বাতিল করা হয়েছে`, 'alert');
       renderAdminDashboard(document.getElementById('app'));
     }
   };
@@ -1503,6 +1553,7 @@ function renderPoliceTab(container) {
       station,
       badge,
       username,
+      password, // Password included for mobile app authentication
       status: 'ON_DUTY',
       lat: 23.75 + (Math.random() - 0.5) * 0.05,
       lng: 90.38 + (Math.random() - 0.5) * 0.05
@@ -1510,6 +1561,7 @@ function renderPoliceTab(container) {
 
     appState.policeRoster.unshift(newOfficer);
     saveState(appState);
+    savePoliceOfficerToFirebase(newOfficer); // Persist to Firebase Cloud!
 
     const credBox = document.getElementById('new-cred-box');
     credBox.style.display = 'block';
