@@ -6,7 +6,7 @@ import L from 'leaflet';
    ========================================================== */
 
 // Initial Simulated State (Stored in localStorage)
-const STORAGE_KEY = 'safeciz_state_v3';
+const STORAGE_KEY = 'safeciz_state_v5';
 
 // List of 85+ Bangladesh Police Stations (DMP, CMP, RMP, KMP, SMP, BMP, GMP, RPMP & Major Districts)
 const bangladeshPoliceStations = [
@@ -199,33 +199,16 @@ const defaultState = {
   adminAuth: false,
   activeTab: 'radar', // 'radar' | 'kyc' | 'police' | 'logs'
   selectedKYC: null, // For detail modal
-  kycQueue: [...defaultKYCData],
+  kycQueue: [], // Basic demo OFF - clean for real mobile registrations
   policeRoster: [
-    { id: 'pol-1', name: 'মোঃ রফিকুল ইসলাম', rank: 'Sub-Inspector (SI)', station: 'ধানমন্ডি মডেল থানা (Dhanmondi Model PS)', badge: 'BD-8841', username: 'pol_dhn_8841', status: 'ON_DUTY', lat: 23.7461, lng: 90.3742 },
-    { id: 'pol-2', name: 'শহীদুল আলম', rank: 'Assistant Sub-Inspector (ASI)', station: 'গুলশান থানা (Gulshan PS)', badge: 'BD-9204', username: 'pol_gul_9204', status: 'ON_DUTY', lat: 23.7925, lng: 90.4078 },
-    { id: 'pol-3', name: 'কাজী মাহমুদ হাসান', rank: 'Officer in Charge (OC)', station: 'রমনা মডেল থানা (Ramna Model PS)', badge: 'BD-7102', username: 'pol_ram_7102', status: 'ON_DUTY', lat: 23.7412, lng: 90.4011 },
-    { id: 'pol-4', name: 'নাসির উদ্দিন', rank: 'Constable', station: 'উত্তরা পূর্ব থানা (Uttara East PS)', badge: 'BD-6019', username: 'pol_utt_6019', status: 'OFF_DUTY', lat: 23.8759, lng: 90.3795 }
+    { id: 'pol-1', name: 'মোঃ রফিকুল ইসলাম', rank: 'Sub-Inspector (SI)', station: 'ধানমন্ডি মডেল থানা (Dhanmondi Model PS, DMP)', badge: 'BD-8841', username: 'pol_8841', status: 'ON_DUTY', lat: 23.7461, lng: 90.3742 },
+    { id: 'pol-2', name: 'শহীদুল আলম', rank: 'Assistant Sub-Inspector (ASI)', station: 'গুলশান থানা (Gulshan PS, DMP)', badge: 'BD-9204', username: 'pol_9204', status: 'ON_DUTY', lat: 23.7925, lng: 90.4078 },
+    { id: 'pol-3', name: 'কাজী মাহমুদ হাসান', rank: 'Officer in Charge (OC)', station: 'রমনা মডেল থানা (Ramna Model PS, DMP)', badge: 'BD-7102', username: 'pol_7102', status: 'ON_DUTY', lat: 23.7412, lng: 90.4011 },
+    { id: 'pol-4', name: 'নাসির উদ্দিন', rank: 'Constable', station: 'উত্তরা পূর্ব থানা (Uttara East PS, DMP)', badge: 'BD-6019', username: 'pol_6019', status: 'OFF_DUTY', lat: 23.8759, lng: 90.3795 }
   ],
-  activeIncidents: [
-    {
-      id: 'sos-9921',
-      victimName: 'নুসরাত জাহান (Nusrat Jahan)',
-      phone: '01755-123456',
-      bloodGroup: 'B+',
-      battery: '68%',
-      lat: 23.7445,
-      lng: 90.3725,
-      locationName: 'ধানমন্ডি লেক সংলগ্ন ৮/এ রোড',
-      status: 'ACTIVE',
-      assignedTo: 'ধানমন্ডি পেট্রোল টিম #০৩ (SI রফিকুল)',
-      startedAt: '১ মিনিট ২০ সেকেন্ড আগে',
-      speed: '০ কিমি/ঘণ্টা (স্থির অবস্থান)'
-    }
-  ],
+  activeIncidents: [], // Basic demo OFF - 0 active incidents by default
   logs: [
-    { time: '19:42:10', type: 'ALERT', text: 'SOS Activated: ভিকটিম নুসরাত জাহান (ধানমন্ডি লেক, ব্যাসার্ধ ২ কিমি)' },
-    { time: '19:42:12', type: 'SUCCESS', text: 'FCM High-Priority Siren dispatched to 4 nearby officers & 3 family members' },
-    { time: '19:42:45', type: 'SUCCESS', text: 'SI রফিকুল ইসলাম (ধানমন্ডি থানা) কল রিসিভ করেছেন। En-route via Google Maps' }
+    { time: 'LIVE', type: 'SUCCESS', text: 'safeCIZ Central Cloud: Monitoring system active nationwide' }
   ]
 };
 
@@ -894,13 +877,15 @@ function renderAdminDashboard(container) {
 // Tab 1: Live Command Radar (Leaflet / OpenStreetMap)
 // ----------------------------------------------------------
 function renderRadarTab(container) {
+  const activeCount = appState.activeIncidents.length;
+
   container.innerHTML = `
     <div class="radar-layout">
       <div class="map-container">
         <div id="admin-leaflet-map"></div>
         <div style="position: absolute; top: 15px; left: 60px; z-index: 1000; background: rgba(8,15,27,0.85); backdrop-filter: blur(10px); border: 1px solid var(--border-subtle); padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.82rem;">
           <span style="color: var(--cyan-400); font-weight: bold;">● OpenStreetMap লাইভ ফিড</span> | 
-          সক্রিয় এসওএস: <span style="color: var(--red-500); font-weight: bold;">${appState.activeIncidents.length} টি</span> | 
+          সক্রিয় এসওএস: ${activeCount > 0 ? `<span style="color: var(--red-500); font-weight: bold;">${activeCount} টি (সক্রিয়)</span>` : `<span style="color: var(--emerald-400); font-weight: bold;">০ টি (সকল এলাকা নিরাপদ)</span>`} | 
           অন-ডিউটি পুলিশ: <span style="color: var(--emerald-400); font-weight: bold;">${appState.policeRoster.filter(p => p.status === 'ON_DUTY').length} জন</span>
         </div>
       </div>
@@ -908,11 +893,24 @@ function renderRadarTab(container) {
       <div class="radar-sidebar">
         <div class="radar-sidebar-header">
           <h3 style="font-size: 1.15rem;">সক্রিয় এসওএস অ্যালার্ট</h3>
-          <span style="font-size: 0.75rem; background: var(--red-glow); color: var(--red-500); padding: 0.2rem 0.5rem; border-radius: 99px; font-weight: bold;">LIVE</span>
+          <span style="font-size: 0.75rem; ${activeCount > 0 ? 'background: var(--red-glow); color: var(--red-500);' : 'background: rgba(0,230,118,0.15); color: var(--emerald-400);'} padding: 0.2rem 0.5rem; border-radius: 99px; font-weight: bold;">
+            ${activeCount > 0 ? `🚨 ${activeCount} LIVE` : '● 0 ACTIVE'}
+          </span>
         </div>
 
         <div class="active-incidents-list">
-          ${appState.activeIncidents.map(inc => `
+          ${activeCount === 0 ? `
+            <div style="text-align: center; padding: 3rem 1.2rem; background: rgba(0,242,254,0.03); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); margin-top: 0.8rem;">
+              <span style="font-size: 2.8rem; display: block; margin-bottom: 0.8rem;">🛡️</span>
+              <h4 style="font-size: 1.05rem; margin-bottom: 0.4rem; color: var(--emerald-400);">কোন সক্রিয় এসওএস নেই</h4>
+              <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1.2rem;">
+                সকল এলাকা শান্ত ও নিরাপদ রয়েছে। ডেমো অ্যালার্ট সম্পূর্ণ বন্ধ করা হয়েছে। নাগরিকরা safeCIZ মোবাইল অ্যাপ থেকে এসওএস পাঠালে সরাসরি এখানে হাই-প্রায়োরিটি সাইরেন সহ রিয়েল-টাইম ডিসপ্যাচ হবে।
+              </p>
+              <button class="btn btn-outline" style="font-size: 0.8rem; padding: 0.45rem 0.9rem;" onclick="window.triggerTestSOS()">
+                🚨 প্রয়োজনে টেস্ট এসওএস সিমুলেট করুন
+              </button>
+            </div>
+          ` : appState.activeIncidents.map(inc => `
             <div class="incident-card" data-inc-id="${inc.id}">
               <div class="incident-card-header">
                 <span class="incident-badge-active">🚨 ${inc.status}</span>
@@ -930,8 +928,11 @@ function renderRadarTab(container) {
               <div style="background: rgba(0,242,254,0.06); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.78rem; margin-bottom: 0.8rem;">
                 👮 নিযুক্ত: <strong style="color: var(--cyan-400);">${inc.assignedTo}</strong>
               </div>
-              <button class="btn btn-primary" style="width: 100%; padding: 0.55rem; font-size: 0.82rem;" onclick="window.dispatchNearestUnit('${inc.id}')">
+              <button class="btn btn-primary" style="width: 100%; padding: 0.55rem; font-size: 0.82rem; margin-bottom: 0.4rem;" onclick="window.dispatchNearestUnit('${inc.id}')">
                 🚓 নিকটস্থ পেট্রোল পাঠান (Dispatch)
+              </button>
+              <button class="btn btn-outline" style="border-color: var(--emerald-400); color: var(--emerald-400); width: 100%; font-size: 0.78rem; padding: 0.45rem;" onclick="window.resolveIncident('${inc.id}')">
+                ✓ এসওএস নিষ্পত্তি / সমাধান করুন (Dismiss)
               </button>
             </div>
           `).join('')}
@@ -953,7 +954,7 @@ function renderRadarTab(container) {
       maxZoom: 19
     }).addTo(map);
 
-    // Victim SOS Marker
+    // Victim SOS Marker (Only if incidents exist)
     appState.activeIncidents.forEach(inc => {
       const victimIcon = L.divIcon({
         className: 'custom-sos-marker',
@@ -1000,6 +1001,35 @@ function renderRadarTab(container) {
 
   window.dispatchNearestUnit = (incId) => {
     showToast('নিকটস্থ পেট্রোল গাড়িকে গুগল ম্যাপস নেভিগেশন ও সাইরেন অ্যালার্ট পাঠানো হয়েছে!', 'success');
+  };
+
+  window.resolveIncident = (incId) => {
+    appState.activeIncidents = appState.activeIncidents.filter(i => i.id !== incId);
+    saveState(appState);
+    showToast('এসওএস অ্যালার্ট সফলভাবে সমাধান ও নিষ্পত্তি করা হয়েছে!', 'success');
+    renderAdminDashboard(document.getElementById('app'));
+  };
+
+  window.triggerTestSOS = () => {
+    appState.activeIncidents = [
+      {
+        id: 'sos-' + Date.now(),
+        victimName: 'নুসরাত জাহান (Nusrat Jahan)',
+        phone: '01755-123456',
+        bloodGroup: 'B+',
+        battery: '68%',
+        lat: 23.7445,
+        lng: 90.3725,
+        locationName: 'ধানমন্ডি লেক সংলগ্ন ৮/এ রোড',
+        status: 'ACTIVE',
+        assignedTo: 'ধানমন্ডি পেট্রোল টিম #০৩ (SI রফিকুল)',
+        startedAt: '১ মিনিট আগে',
+        speed: '০ কিমি/ঘণ্টা (স্থির অবস্থান)'
+      }
+    ];
+    saveState(appState);
+    showToast('টেস্ট এসওএস সিমুলেশন চালু করা হয়েছে!', 'alert');
+    renderAdminDashboard(document.getElementById('app'));
   };
 }
 
