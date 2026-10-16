@@ -149,73 +149,16 @@ const bangladeshPoliceStations = [
   "➕ অন্যান্য / নতুন থানা টাইপ করুন..."
 ];
 
-const defaultKYCData = [
-  {
-    id: 'kyc-101',
-    name: 'সাদিয়া আফরিন (Sadia Afrin)',
-    phone: '01812-345678',
-    email: 'sadia.afrin@example.com',
-    idNumber: '19982692018274619',
-    dob: '১৫ আগস্ট ১৯৯৮',
-    address: 'বাড়ি ৪২, রোড ৭, ধানমন্ডি, ঢাকা',
-    bloodGroup: 'B+',
-    docType: 'NID',
-    selfieUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80',
-    docFrontUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
-    docBackUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
-    status: 'PENDING',
-    livenessScore: '99.4% (লাইভ ফেস নিশ্চিত)',
-    submittedAt: '১০ মিনিট আগে'
-  },
-  {
-    id: 'kyc-102',
-    name: 'তানভীর আহমেদ (Tanvir Ahmed)',
-    phone: '01711-987654',
-    email: 'tanvir.ahmed@example.com',
-    idNumber: '20052692018274620',
-    dob: '১০ মে ২০০৫',
-    address: 'সেক্টর ৪, রোড ১১, উত্তরা, ঢাকা',
-    bloodGroup: 'O+',
-    docType: 'BIRTH_CERT',
-    selfieUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
-    docFrontUrl: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=600&auto=format&fit=crop&q=80',
-    docBackUrl: null, // Birth Certificate needs only 1 document image
-    status: 'PENDING',
-    livenessScore: '98.5% (লাইভ ফেস নিশ্চিত)',
-    submittedAt: '২৫ মিনিট আগে'
-  },
-  {
-    id: 'kyc-103',
-    name: 'ফারহানা ইয়াসমিন (Farhana Yasmin)',
-    phone: '01914-112233',
-    email: 'farhana.y@example.com',
-    idNumber: '19952692018274625',
-    dob: '২২ মার্চ ১৯৯৫',
-    address: 'রোড ১২, গুলশান-২, ঢাকা',
-    bloodGroup: 'A+',
-    docType: 'NID',
-    selfieUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
-    docFrontUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80',
-    docBackUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
-    status: 'PENDING',
-    livenessScore: '99.8% (লাইভ ফেস নিশ্চিত)',
-    submittedAt: '১ ঘণ্টা আগে'
-  }
-];
+// Demo KYC data removed - completely clean for real mobile app registrations
 
 const defaultState = {
   lang: 'bn',
   adminAuth: false,
   activeTab: 'radar', // 'radar' | 'kyc' | 'police' | 'logs'
   selectedKYC: null, // For detail modal
-  kycQueue: [], // Basic demo OFF - clean for real mobile registrations
-  policeRoster: [
-    { id: 'pol-1', name: 'মোঃ রফিকুল ইসলাম', rank: 'Sub-Inspector (SI)', station: 'ধানমন্ডি মডেল থানা (Dhanmondi Model PS, DMP)', badge: 'BD-8841', username: 'pol_8841', status: 'ON_DUTY', lat: 23.7461, lng: 90.3742 },
-    { id: 'pol-2', name: 'শহীদুল আলম', rank: 'Assistant Sub-Inspector (ASI)', station: 'গুলশান থানা (Gulshan PS, DMP)', badge: 'BD-9204', username: 'pol_9204', status: 'ON_DUTY', lat: 23.7925, lng: 90.4078 },
-    { id: 'pol-3', name: 'কাজী মাহমুদ হাসান', rank: 'Officer in Charge (OC)', station: 'রমনা মডেল থানা (Ramna Model PS, DMP)', badge: 'BD-7102', username: 'pol_7102', status: 'ON_DUTY', lat: 23.7412, lng: 90.4011 },
-    { id: 'pol-4', name: 'নাসির উদ্দিন', rank: 'Constable', station: 'উত্তরা পূর্ব থানা (Uttara East PS, DMP)', badge: 'BD-6019', username: 'pol_6019', status: 'OFF_DUTY', lat: 23.8759, lng: 90.3795 }
-  ],
-  activeIncidents: [], // Basic demo OFF - 0 active incidents by default
+  kycQueue: [], // 100% clean for real mobile registrations
+  policeRoster: [], // Populated live from Firebase
+  activeIncidents: [], // Live incidents from Firebase
   logs: [
     { time: 'LIVE', type: 'SUCCESS', text: 'safeCIZ Central Cloud: Monitoring system active nationwide' }
   ]
@@ -264,7 +207,7 @@ subscribeToLiveIncidents((cloudIncidents) => {
 });
 
 subscribeToPoliceRoster((cloudPolice) => {
-  if (Array.isArray(cloudPolice) && cloudPolice.length > 0) {
+  if (Array.isArray(cloudPolice)) {
     appState.policeRoster = cloudPolice;
     saveState(appState);
     const tabContent = document.getElementById('admin-tab-content');
