@@ -1042,12 +1042,6 @@ function renderKYCTab(container) {
         </div>
 
         <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
-          <button class="btn btn-outline" style="border-color:var(--red-500); color:var(--red-500); padding:0.45rem 0.9rem; font-size:0.82rem;" onclick="window.clearAllDemoKYC()">
-            🗑️ সব ডেমো ডাটা মুছুন (Clear All)
-          </button>
-          <button class="btn btn-outline" style="padding:0.45rem 0.9rem; font-size:0.82rem;" onclick="window.restoreDemoKYC()">
-            🔄 ডেমো ডাটা রিস্টোর
-          </button>
           <span style="background:rgba(0,242,254,0.1); color:var(--cyan-400); border:1px solid rgba(0,242,254,0.3); padding:0.45rem 1rem; border-radius:var(--radius-full); font-size:0.85rem; font-weight:bold;">
             অপেক্ষমাণ: ${pendingCount} জন
           </span>
@@ -1067,11 +1061,8 @@ function renderKYCTab(container) {
           <span style="font-size: 3.5rem; display: block; margin-bottom: 1rem;">📭</span>
           <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-primary);">কোন e-KYC আবেদন জমা নেই</h3>
           <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 1.5rem; font-size: 0.92rem; line-height: 1.6;">
-            সব ডেমো ডাটা পরিষ্কার করা হয়েছে। নাগরিকরা <strong>safeCIZ</strong> মোবাইল অ্যাপের মাধ্যমে লাইভ ক্যামেরা সেলফি ও NID/জন্ম নিবন্ধন আপলোড করলে স্বয়ংক্রিয়ভাবে ক্লাউড থেকে এখানে জমা হবে।
+            নাগরিকরা <strong>safeCIZ</strong> মোবাইল অ্যাপের মাধ্যমে লাইভ ক্যামেরা সেলফি ও NID/জন্ম নিবন্ধন আপলোড করলে স্বয়ংক্রিয়ভাবে ক্লাউড থেকে রিয়েল-টাইমে এখানে জমা হবে।
           </p>
-          <button class="btn btn-primary" onclick="window.restoreDemoKYC()">
-            🔄 টেস্ট ডেমো ডাটা ফিরিয়ে আনুন
-          </button>
         </div>
       ` : `
         <div class="kyc-grid">
@@ -1142,25 +1133,6 @@ function renderKYCTab(container) {
     <!-- Full KYC Profile Details Modal -->
     <div id="kyc-detail-modal-container"></div>
   `;
-
-  // Clear all KYC data from local and Firebase
-  window.clearAllDemoKYC = async () => {
-    if (confirm('আপনি কি সব e-KYC ডাটা মুছে ফেলতে চান?')) {
-      appState.kycQueue = [];
-      saveState(appState);
-      await clearAllKYCFromFirebase();
-      showToast('সব e-KYC ডাটা ক্লাউড থেকে মুছে ফেলা হয়েছে!', 'info');
-      renderAdminDashboard(document.getElementById('app'));
-    }
-  };
-
-  // Restore demo data
-  window.restoreDemoKYC = () => {
-    appState.kycQueue = [...defaultKYCData];
-    saveState(appState);
-    showToast('টেস্ট ডেমো ডাটা রিস্টোর করা হয়েছে!', 'success');
-    renderAdminDashboard(document.getElementById('app'));
-  };
 
   // Quick Approve (Updates both KYC and Citizen Account in Firebase)
   window.approveKYC = async (id) => {
@@ -1405,7 +1377,7 @@ function renderPoliceTab(container) {
       <div class="roster-card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3 style="font-size: 1.3rem;">সক্রিয় পুলিশ অফিসার তালিকা</h3>
-          <span style="font-size: 0.8rem; color: var(--text-muted);">মোট সদস্য: ${appState.policeRoster.length} জন</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="police-count-badge">মোট সদস্য: ${appState.policeRoster.length} জন</span>
         </div>
 
         <table class="data-table">
@@ -1413,12 +1385,12 @@ function renderPoliceTab(container) {
             <tr>
               <th>অফিসার নাম ও পদবী</th>
               <th>থানা</th>
-              <th>ইউজারনেম</th>
+              <th>লগইন আইডি ও পাসওয়ার্ড</th>
               <th>ডিউটি স্ট্যাটাস</th>
               <th>অ্যাকশন</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="police-roster-tbody">
             ${appState.policeRoster.map(pol => `
               <tr>
                 <td>
@@ -1426,7 +1398,13 @@ function renderPoliceTab(container) {
                   <small style="color:var(--text-muted);">${pol.rank} (${pol.badge})</small>
                 </td>
                 <td style="font-size:0.85rem;">${pol.station}</td>
-                <td><code>${pol.username}</code></td>
+                <td>
+                  <div style="font-size:0.85rem;"><strong>ID:</strong> <code style="color:var(--cyan-400);">${pol.username}</code></div>
+                  <div style="font-size:0.85rem; margin-top:0.3rem; display:flex; align-items:center; gap:0.4rem;">
+                    <strong>Pass:</strong> <code style="color:#ffcc00; font-weight:bold; letter-spacing:0.5px;">${pol.password || 'Safe#2026'}</code>
+                    <button class="btn btn-outline" style="padding:0.15rem 0.35rem; font-size:0.68rem;" onclick="navigator.clipboard.writeText('${pol.password || 'Safe#2026'}'); window.showToast && window.showToast('পাসওয়ার্ড কপি হয়েছে', 'success')" title="পাসওয়ার্ড কপি করুন">📋</button>
+                  </div>
+                </td>
                 <td>
                   <span style="padding:0.2rem 0.5rem; border-radius:var(--radius-sm); font-size:0.75rem; font-weight:bold; ${
                     pol.status === 'ON_DUTY' ? 'background:rgba(0,230,118,0.15); color:var(--emerald-400);' : 'background:rgba(255,255,255,0.06); color:var(--text-muted);'
@@ -1446,6 +1424,42 @@ function renderPoliceTab(container) {
       </div>
     </div>
   `;
+
+  // Function to re-render table rows without destroying the form or credential box
+  const refreshPoliceTable = () => {
+    const tbody = document.getElementById('police-roster-tbody');
+    const countBadge = document.getElementById('police-count-badge');
+    if (countBadge) countBadge.innerText = `মোট সদস্য: ${appState.policeRoster.length} জন`;
+    if (!tbody) return;
+    tbody.innerHTML = appState.policeRoster.map(pol => `
+      <tr>
+        <td>
+          <strong>${pol.name}</strong><br/>
+          <small style="color:var(--text-muted);">${pol.rank} (${pol.badge})</small>
+        </td>
+        <td style="font-size:0.85rem;">${pol.station}</td>
+        <td>
+          <div style="font-size:0.85rem;"><strong>ID:</strong> <code style="color:var(--cyan-400);">${pol.username}</code></div>
+          <div style="font-size:0.85rem; margin-top:0.3rem; display:flex; align-items:center; gap:0.4rem;">
+            <strong>Pass:</strong> <code style="color:#ffcc00; font-weight:bold; letter-spacing:0.5px;">${pol.password || 'Safe#2026'}</code>
+            <button class="btn btn-outline" style="padding:0.15rem 0.35rem; font-size:0.68rem;" onclick="navigator.clipboard.writeText('${pol.password || 'Safe#2026'}'); window.showToast && window.showToast('পাসওয়ার্ড কপি হয়েছে', 'success')" title="পাসওয়ার্ড কপি করুন">📋</button>
+          </div>
+        </td>
+        <td>
+          <span style="padding:0.2rem 0.5rem; border-radius:var(--radius-sm); font-size:0.75rem; font-weight:bold; ${
+            pol.status === 'ON_DUTY' ? 'background:rgba(0,230,118,0.15); color:var(--emerald-400);' : 'background:rgba(255,255,255,0.06); color:var(--text-muted);'
+          }">
+            ${pol.status === 'ON_DUTY' ? '● ON-DUTY' : '○ OFF-DUTY'}
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.75rem;" onclick="window.toggleDuty('${pol.id}')">
+            ${pol.status === 'ON_DUTY' ? 'ডিউটি অফ করুন' : 'ডিউটি অন করুন'}
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  };
 
   // Dynamic Station Select Change Listener
   const stationSelect = document.getElementById('pol-station');
@@ -1474,7 +1488,6 @@ function renderPoliceTab(container) {
       const customVal = customInput ? customInput.value.trim() : '';
       if (customVal) {
         station = customVal;
-        // Optionally insert into station list
         if (!bangladeshPoliceStations.includes(customVal)) {
           bangladeshPoliceStations.splice(bangladeshPoliceStations.length - 1, 0, customVal);
         }
@@ -1506,29 +1519,54 @@ function renderPoliceTab(container) {
     saveState(appState);
     savePoliceOfficerToFirebase(newOfficer); // Persist to Firebase Cloud!
 
+    // Reset input fields
+    document.getElementById('pol-name').value = '';
+    document.getElementById('pol-badge').value = '';
+
+    // Show prominent Persistent Credential Card
     const credBox = document.getElementById('new-cred-box');
     credBox.style.display = 'block';
     credBox.innerHTML = `
-      <div class="cred-copy-box">
-        <div>
-          <small style="color:var(--text-muted); display:block;">অফিসারকে এই তথ্য দিন:</small>
-          <span>ইউজারনেম: <code>${username}</code></span><br/>
-          <span>পাসওয়ার্ড: <code>${password}</code></span><br/>
-          <span>নিযুক্ত থানা: <strong>${station}</strong></span>
+      <div style="background:rgba(0, 230, 118, 0.08); border:1px solid rgba(0, 230, 118, 0.4); border-radius:var(--radius-md); padding:1.2rem; margin-top:1.5rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.8rem;">
+          <span style="font-size:1.3rem;">✅</span>
+          <strong style="color:var(--emerald-400); font-size:1.05rem;">নতুন পুলিশ অফিসার সফলভাবে যুক্ত হয়েছে!</strong>
         </div>
-        <button class="btn btn-outline" style="padding:0.4rem 0.8rem; font-size:0.78rem;" id="copy-cred-btn">
-          📋 কপি করুন
-        </button>
+        <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:1rem; margin-bottom:1rem; font-size:0.92rem; line-height:1.8;">
+          <div><span style="color:var(--text-muted);">অফিসার নাম:</span> <strong>${name}</strong> (${rank})</div>
+          <div><span style="color:var(--text-muted);">নিযুক্ত থানা:</span> <strong>${station}</strong> (ব্যাজ: ${badge})</div>
+          <div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="color:var(--text-muted);">ইউজারনেম (Username):</span> <code style="color:var(--cyan-400); font-size:1.1rem; font-weight:bold;">${username}</code>
+            </div>
+            <button class="btn btn-outline" style="padding:0.2rem 0.5rem; font-size:0.75rem;" onclick="navigator.clipboard.writeText('${username}'); window.showToast && window.showToast('ইউজারনেম কপি হয়েছে', 'success')">📋 কপি</button>
+          </div>
+          <div style="margin-top:0.35rem; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="color:var(--text-muted);">পাসওয়ার্ড (Password):</span> <code style="color:#ffcc00; font-size:1.2rem; font-weight:bold; letter-spacing:1px;">${password}</code>
+            </div>
+            <button class="btn btn-outline" style="padding:0.2rem 0.5rem; font-size:0.75rem;" onclick="navigator.clipboard.writeText('${password}'); window.showToast && window.showToast('পাসওয়ার্ড কপি হয়েছে', 'success')">📋 কপি</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:0.8rem; flex-wrap:wrap;">
+          <button class="btn btn-primary" style="flex:1; padding:0.6rem 1rem; font-size:0.85rem;" id="copy-cred-btn">
+            📋 সম্পূর্ণ তথ্য ও পাসওয়ার্ড কপি করুন
+          </button>
+          <button class="btn btn-outline" style="padding:0.6rem 0.8rem; font-size:0.82rem;" onclick="document.getElementById('new-cred-box').style.display='none';">
+            ✕ বন্ধ করুন
+          </button>
+        </div>
       </div>
     `;
 
     document.getElementById('copy-cred-btn').addEventListener('click', () => {
-      navigator.clipboard.writeText(`safeCIZ Police Login:\nStation: ${station}\nUsername: ${username}\nPassword: ${password}`);
-      showToast('ক্রেডেনশিয়াল ক্লিপবোর্ডে কপি হয়েছে!', 'success');
+      navigator.clipboard.writeText(`safeCIZ Police Officer Account:\nStation: ${station}\nOfficer: ${name} (${rank})\nBadge: ${badge}\nUsername: ${username}\nPassword: ${password}`);
+      showToast('ইউজারনেম ও পাসওয়ার্ড ক্লিপবোর্ডে কপি হয়েছে!', 'success');
     });
 
+    // Update table dynamically without wiping new-cred-box
+    refreshPoliceTable();
     showToast(`অফিসার ${name}-এর অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে!`, 'success');
-    renderPoliceTab(container);
   });
 
   window.toggleDuty = (id) => {
@@ -1537,7 +1575,7 @@ function renderPoliceTab(container) {
       officer.status = officer.status === 'ON_DUTY' ? 'OFF_DUTY' : 'ON_DUTY';
       saveState(appState);
       showToast(`${officer.name}-এর ডিউটি স্ট্যাটাস পরিবর্তিত হয়েছে`, 'info');
-      renderPoliceTab(container);
+      refreshPoliceTable();
     }
   };
 }
