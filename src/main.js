@@ -544,7 +544,7 @@ function renderLandingPage(container) {
         <div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:1rem; margin-bottom:1.5rem;">
           <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.4rem;">
             <span style="color:var(--text-muted);">প্যাকেজ সাইজ:</span>
-            <strong>24.6 MB</strong>
+            <strong>50.4 MB (Release APK)</strong>
           </div>
           <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.4rem;">
             <span style="color:var(--text-muted);">ন্যূনতম অ্যান্ড্রয়েড:</span>
@@ -555,9 +555,9 @@ function renderLandingPage(container) {
             <strong>iOS 14.0+ (TestFlight)</strong>
           </div>
         </div>
-        <button class="btn btn-primary" id="start-apk-download" style="width:100%; padding:0.9rem;">
-          📥 সরাসরি APK ডাউনলোড শুরু করুন
-        </button>
+        <a href="/downloads/safeCIZ.apk" download="safeCIZ.apk" class="btn btn-primary" id="start-apk-download" style="width:100%; padding:0.9rem; text-decoration:none; display:flex; justify-content:center;">
+          📥 সরাসরি আসল APK ডাউনলোড করুন (50.4 MB)
+        </a>
       </div>
     </div>
   `;
