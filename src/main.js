@@ -9,6 +9,13 @@ import {
   subscribeToLiveIncidents, 
   resolveSOSIncidentInFirebase 
 } from './firebase.js';
+import { 
+  initSocketClient, 
+  socketTriggerSOS, 
+  socketUpdateLocation, 
+  socketDispatchPolice, 
+  socketResolveSOS 
+} from './socket.js';
 
 /* ==========================================================
    safeCIZ — Client-Side Router, State & Translation Engine
@@ -213,6 +220,105 @@ subscribeToPoliceRoster((cloudPolice) => {
     const tabContent = document.getElementById('admin-tab-content');
     if (tabContent && appState.activeTab === 'police') {
       renderPoliceTab(tabContent);
+    }
+  }
+});
+
+// ==========================================================
+// SOCKET.IO REAL-TIME WEBSOCKET DISPATCH & GPS STREAMING
+// ==========================================================
+let adminLeafletMap = null;
+const victimMarkers = {};
+const victimCircles = {};
+const policeMarkers = {};
+
+initSocketClient({
+  role: 'admin',
+  name: 'safeCIZ Central Dispatch Admin',
+  onConnect: (id) => {
+    console.log('[safeCIZ Web] Socket.IO Connected with socket ID:', id);
+  },
+  onActiveIncidents: (incidents) => {
+    if (Array.isArray(incidents) && incidents.length > 0) {
+      appState.activeIncidents = incidents;
+      saveState(appState);
+      const tabContent = document.getElementById('admin-tab-content');
+      if (tabContent && appState.activeTab === 'radar') {
+        renderRadarTab(tabContent);
+      }
+    }
+  },
+  onSOSBroadcast: (incident) => {
+    console.log('[safeCIZ Web] Real-Time SOS received via Socket.IO:', incident);
+    const existingIdx = appState.activeIncidents.findIndex(i => i.id === incident.id);
+    if (existingIdx >= 0) {
+      appState.activeIncidents[existingIdx] = incident;
+    } else {
+      appState.activeIncidents.unshift(incident);
+    }
+    saveState(appState);
+
+    // Audio alarm tone
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.4);
+    } catch (_) {}
+
+    showToast(`🚨 জরুরি এসওএস: ${incident.victimName}! জিপিএস: ${Number(incident.lat).toFixed(4)}, ${Number(incident.lng).toFixed(4)}`, 'alert');
+
+    // Smoothly fly map to victim's pinpoint accurate location
+    if (adminLeafletMap && incident.lat && incident.lng) {
+      adminLeafletMap.flyTo([Number(incident.lat), Number(incident.lng)], 16, { animate: true, duration: 1.5 });
+    }
+
+    if (appState.activeTab === 'radar') {
+      const tabContent = document.getElementById('admin-tab-content');
+      if (tabContent) renderRadarTab(tabContent);
+    }
+  },
+  onLocationStream: (data) => {
+    const { id, lat, lng, speed } = data;
+    const inc = appState.activeIncidents.find(i => i.id === id);
+    if (inc) {
+      inc.lat = Number(lat);
+      inc.lng = Number(lng);
+      if (speed) inc.speed = `${(speed * 3.6).toFixed(1)} কিমি/ঘণ্টা`;
+    }
+
+    // 60fps realtime marker position update on Leaflet map
+    if (adminLeafletMap && victimMarkers[id]) {
+      victimMarkers[id].setLatLng([Number(lat), Number(lng)]);
+    }
+    if (adminLeafletMap && victimCircles[id]) {
+      victimCircles[id].setLatLng([Number(lat), Number(lng)]);
+    }
+  },
+  onSOSResolved: ({ incidentId }) => {
+    appState.activeIncidents = appState.activeIncidents.filter(i => i.id !== incidentId);
+    saveState(appState);
+    if (adminLeafletMap) {
+      if (victimMarkers[incidentId]) {
+        adminLeafletMap.removeLayer(victimMarkers[incidentId]);
+        delete victimMarkers[incidentId];
+      }
+      if (victimCircles[incidentId]) {
+        adminLeafletMap.removeLayer(victimCircles[incidentId]);
+        delete victimCircles[incidentId];
+      }
+    }
+    if (appState.activeTab === 'radar') {
+      const tabContent = document.getElementById('admin-tab-content');
+      if (tabContent) renderRadarTab(tabContent);
     }
   }
 });
@@ -930,46 +1036,79 @@ function renderRadarTab(container) {
     </div>
   `;
 
-  // Initialize Leaflet Map
+  // Initialize Leaflet Map with Accurate GPS Centering
   setTimeout(() => {
     const mapElement = document.getElementById('admin-leaflet-map');
     if (!mapElement) return;
 
-    // Dhaka Coordinates
-    const map = L.map('admin-leaflet-map').setView([23.7461, 90.3742], 14);
+    // Destroy existing instance to prevent "Map container is already initialized"
+    if (adminLeafletMap) {
+      adminLeafletMap.remove();
+      adminLeafletMap = null;
+    }
+
+    // Determine initial center: Focus on first active SOS, or browser geolocation, or central Dhaka
+    let initialLat = 23.8103;
+    let initialLng = 90.4125;
+    let initialZoom = 13;
+
+    if (appState.activeIncidents.length > 0) {
+      const activeInc = appState.activeIncidents[0];
+      if (activeInc.lat && activeInc.lng) {
+        initialLat = Number(activeInc.lat);
+        initialLng = Number(activeInc.lng);
+        initialZoom = 16;
+      }
+    }
+
+    adminLeafletMap = L.map('admin-leaflet-map').setView([initialLat, initialLng], initialZoom);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
+      attribution: '© OpenStreetMap contributors | safeCIZ Real-Time GPS',
       maxZoom: 19
-    }).addTo(map);
+    }).addTo(adminLeafletMap);
 
-    // Victim SOS Marker (Only if incidents exist)
+    // If no active incident, detect admin browser accurate GPS position
+    if (appState.activeIncidents.length === 0 && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        if (adminLeafletMap && appState.activeIncidents.length === 0) {
+          adminLeafletMap.setView([pos.coords.latitude, pos.coords.longitude], 15);
+        }
+      }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
+    }
+
+    // Victim SOS Markers (Dynamic references for live tracking)
     appState.activeIncidents.forEach(inc => {
       const victimIcon = L.divIcon({
         className: 'custom-sos-marker',
-        html: `<div style="background:#ff3366; width:36px; height:36px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 20px #ff3366; display:flex; align-items:center; justify-content:center; color:#fff; font-size:16px;">🚨</div>`,
-        iconSize: [36, 36]
+        html: `<div style="background:#ff3366; width:38px; height:38px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 25px #ff3366; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; animation: pulse 1.2s infinite;">🚨</div>`,
+        iconSize: [38, 38]
       });
 
-      const marker = L.marker([inc.lat, inc.lng], { icon: victimIcon }).addTo(map);
+      const marker = L.marker([Number(inc.lat), Number(inc.lng)], { icon: victimIcon }).addTo(adminLeafletMap);
       marker.bindPopup(`
-        <div style="color:#000;">
-          <h4 style="margin:0 0 5px;">${inc.victimName}</h4>
-          <p style="margin:0 0 5px; font-size:12px;">${inc.locationName}</p>
-          <p style="margin:0; font-size:11px; color:#ff3366; font-weight:bold;">🚨 এসওএস অ্যালার্ট সক্রিয়!</p>
+        <div style="color:#000; min-width:180px;">
+          <h4 style="margin:0 0 4px; font-size:14px; color:#ff3366;">🚨 ${inc.victimName}</h4>
+          <p style="margin:0 0 4px; font-size:12px;"><strong>মোবাইল:</strong> ${inc.phone || 'N/A'}</p>
+          <p style="margin:0 0 4px; font-size:11px; color:#555;">📍 ${inc.locationName || 'লাইভ জিপিএস অবস্থান'}</p>
+          <p style="margin:0; font-size:11px; color:#ff3366; font-weight:bold;">অক্ষাংশ: ${Number(inc.lat).toFixed(5)}, দ্রাঘিমাংশ: ${Number(inc.lng).toFixed(5)}</p>
         </div>
       `).openPopup();
 
-      // Geofence Radius Circle (2 km)
-      L.circle([inc.lat, inc.lng], {
+      victimMarkers[inc.id] = marker;
+
+      // Geofence Radius Circle (2 km alert zone)
+      const circle = L.circle([Number(inc.lat), Number(inc.lng)], {
         color: '#ff3366',
         fillColor: '#ff3366',
         fillOpacity: 0.12,
         radius: 2000
-      }).addTo(map);
+      }).addTo(adminLeafletMap);
+
+      victimCircles[inc.id] = circle;
     });
 
-    // Police Markers
+    // On-Duty Police Patrol Markers
     appState.policeRoster.filter(p => p.status === 'ON_DUTY').forEach(pol => {
       const policeIcon = L.divIcon({
         className: 'custom-pol-marker',
@@ -977,47 +1116,56 @@ function renderRadarTab(container) {
         iconSize: [32, 32]
       });
 
-      L.marker([pol.lat, pol.lng], { icon: policeIcon }).addTo(map)
-        .bindPopup(`
-          <div style="color:#000;">
-            <h4 style="margin:0 0 4px;">${pol.name}</h4>
-            <span style="font-size:11px; background:#e0f2fe; padding:2px 5px; border-radius:4px;">${pol.rank}</span>
-            <p style="margin:4px 0 0; font-size:12px;">${pol.station}</p>
-          </div>
-        `);
+      const polMarker = L.marker([Number(pol.lat || 23.7540), Number(pol.lng || 90.3810)], { icon: policeIcon }).addTo(adminLeafletMap);
+      polMarker.bindPopup(`
+        <div style="color:#000;">
+          <h4 style="margin:0 0 4px;">${pol.name}</h4>
+          <span style="font-size:11px; background:#e0f2fe; padding:2px 5px; border-radius:4px;">${pol.rank}</span>
+          <p style="margin:4px 0 0; font-size:12px;">${pol.station}</p>
+        </div>
+      `);
+      policeMarkers[pol.id] = polMarker;
     });
   }, 100);
 
   window.dispatchNearestUnit = (incId) => {
-    showToast('নিকটস্থ পেট্রোল গাড়িকে গুগল ম্যাপস নেভিগেশন ও সাইরেন অ্যালার্ট পাঠানো হয়েছে!', 'success');
+    socketDispatchPolice({
+      incidentId: incId,
+      officerName: 'ধানমন্ডি পেট্রোল টিম #০৩ (SI রফিকুল)',
+      policeLat: 23.7540,
+      policeLng: 90.3810,
+      eta: '২ মিনিট'
+    });
+    showToast('নিকটস্থ পেট্রোল টিমকে Socket.IO ও গুগল ম্যাপস নেভিগেশন ডিসপ্যাচ পাঠানো হয়েছে!', 'success');
   };
 
   window.resolveIncident = async (incId) => {
     appState.activeIncidents = appState.activeIncidents.filter(i => i.id !== incId);
     saveState(appState);
+    socketResolveSOS(incId);
     await resolveSOSIncidentInFirebase(incId);
     showToast('এসওএস অ্যালার্ট সফলভাবে সমাধান ও নিষ্পত্তি করা হয়েছে!', 'success');
     renderAdminDashboard(document.getElementById('app'));
   };
 
   window.triggerTestSOS = () => {
-    appState.activeIncidents = [
-      {
-        id: 'sos-' + Date.now(),
-        victimName: 'নুসরাত জাহান (Nusrat Jahan)',
-        phone: '01755-123456',
-        bloodGroup: 'B+',
-        battery: '68%',
-        lat: 23.7445,
-        lng: 90.3725,
-        locationName: 'ধানমন্ডি লেক সংলগ্ন ৮/এ রোড',
-        status: 'ACTIVE',
-        assignedTo: 'ধানমন্ডি পেট্রোল টিম #০৩ (SI রফিকুল)',
-        startedAt: '১ মিনিট আগে',
-        speed: '০ কিমি/ঘণ্টা (স্থির অবস্থান)'
-      }
-    ];
+    const testIncident = {
+      id: 'sos-' + Date.now(),
+      victimName: 'নুসরাত জাহান (Nusrat Jahan)',
+      phone: '01755-123456',
+      bloodGroup: 'B+',
+      battery: '68%',
+      lat: 23.7445,
+      lng: 90.3725,
+      locationName: 'ধানমন্ডি লেক সংলগ্ন ৮/এ রোড',
+      status: 'ACTIVE',
+      assignedTo: 'ধানমন্ডি পেট্রোল টিম #০৩ (SI রফিকুল)',
+      startedAt: 'এখনই',
+      speed: '০ কিমি/ঘণ্টা (স্থির অবস্থান)'
+    };
+    appState.activeIncidents = [testIncident];
     saveState(appState);
+    socketTriggerSOS(testIncident);
     showToast('টেস্ট এসওএস সিমুলেশন চালু করা হয়েছে!', 'alert');
     renderAdminDashboard(document.getElementById('app'));
   };
